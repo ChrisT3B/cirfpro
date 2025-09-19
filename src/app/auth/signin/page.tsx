@@ -5,13 +5,50 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import { useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const searchParams = useSearchParams()
   
+  // Handle URL parameters for verification messages
+useEffect(() => {
+  const error = searchParams.get('error')
+  const verified = searchParams.get('verified')
+  const message = searchParams.get('message')
+  
+  if (error) {
+    if (message) {
+      setError(decodeURIComponent(message))
+    } else {
+      switch (error) {
+        case 'verification_failed':
+          setError('Email verification failed. The link may have expired.')
+          break
+        case 'unexpected_error':
+          setError('An unexpected error occurred. Please try again.')
+          break
+        default:
+          setError('An error occurred during authentication.')
+      }
+    }
+  }
+  
+  if (verified === 'true') {
+    if (message) {
+      setMessage(decodeURIComponent(message))
+    } else {
+      setMessage('Email verified successfully! You can now sign in.')
+    }
+  }
+}, [searchParams])
+
   const { signIn } = useAuth()
   const router = useRouter()
 
@@ -42,6 +79,11 @@ export default function SignInPage() {
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
           </div>
+        )}
+        {message && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        {message}
+        </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">

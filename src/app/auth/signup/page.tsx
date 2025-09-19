@@ -1,10 +1,10 @@
-// src/app/auth/signup/page.tsx
+// src/app/auth/signup/page.tsx - TEMPORARY VERSION FOR TESTING
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase'
+import { AuthService } from '@/lib/authService'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -14,52 +14,165 @@ export default function SignUpPage() {
   const [role, setRole] = useState<'coach' | 'athlete'>('athlete')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  
-  const { signUp } = useAuth()
-  const router = useRouter()
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    
+    switch(name) {
+      case 'email':
+        setEmail(value)
+        break
+      case 'password':
+        setPassword(value)
+        break
+      case 'firstName':
+        setFirstName(value)
+        break
+      case 'lastName':
+        setLastName(value)
+        break
+      case 'role':
+        setRole(value as 'coach' | 'athlete')
+        break
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setIsLoading(true)
 
+    // Basic client-side validation
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long')
+      setIsLoading(false)
+      return
+    }
+
+    if (firstName.trim().length < 2) {
+      setError('First name must be at least 2 characters long')
+      setIsLoading(false)
+      return
+    }
+
+    if (lastName.trim().length < 2) {
+      setError('Last name must be at least 2 characters long')
+      setIsLoading(false)
+      return
+    }
+
     try {
-      await signUp(email, password, { role, firstName, lastName })
-      router.push('/dashboard')
+      console.log('Testing AuthService.registerUser...')
+      const result = await AuthService.registerUser({
+        email: email,
+        password: password,
+        firstName: firstName,
+        lastName: lastName,
+        role: role
+      })
+
+      console.log('AuthService result:', result)
+
+      if (result.error) {
+        setError(`AuthService error: ${result.error.message}`)
+      } else if (result.data) {
+        setError(`SUCCESS: User registered with ID ${result.data.id}. Check pending_users table!`)
+      }
+
     } catch (err: any) {
-      setError(err.message || 'Failed to create account')
+      console.error('Exception during AuthService test:', err)
+      setError(`Exception: ${err.message}`)
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">CIRFPRO</h1>
-          <p className="text-gray-600 mt-2">Create your account</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            CIRFPRO Auth Test
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Testing AuthService registration
+          </p>
         </div>
+        
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className={`border px-4 py-3 rounded mb-4 text-sm ${
+              error.includes('SUCCESS') 
+                ? 'bg-green-50 border-green-200 text-green-600'
+                : 'bg-red-50 border-red-200 text-red-600'
+            }`}>
+              {error}
+            </div>
+          )}
 
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+          {/* Role Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">I am a:</label>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <div>
+                <input
+                  type="radio"
+                  id="athlete"
+                  name="role"
+                  value="athlete"
+                  checked={role === 'athlete'}
+                  onChange={handleInputChange}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor="athlete"
+                  className={`block w-full px-4 py-2 text-center border rounded-md cursor-pointer ${
+                    role === 'athlete'
+                      ? 'border-blue-500 bg-blue-50 text-blue-600'
+                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                  }`}
+                >
+                  Runner/Athlete
+                </label>
+              </div>
+              <div>
+                <input
+                  type="radio"
+                  id="coach"
+                  name="role"
+                  value="coach"
+                  checked={role === 'coach'}
+                  onChange={handleInputChange}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor="coach"
+                  className={`block w-full px-4 py-2 text-center border rounded-md cursor-pointer ${
+                    role === 'coach'
+                      ? 'border-blue-500 bg-blue-50 text-blue-600'
+                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                  }`}
+                >
+                  Coach
+                </label>
+              </div>
+            </div>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
                 First Name
               </label>
               <input
-                id="firstName"
                 type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                name="firstName"
+                id="firstName"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={firstName}
+                onChange={handleInputChange}
+                className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div>
@@ -67,42 +180,29 @@ export default function SignUpPage() {
                 Last Name
               </label>
               <input
-                id="lastName"
                 type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                name="lastName"
+                id="lastName"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={lastName}
+                onChange={handleInputChange}
+                className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-              I am a:
-            </label>
-            <select
-              id="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'coach' | 'athlete')}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="athlete">Athlete</option>
-              <option value="coach">Coach</option>
-            </select>
-          </div>
-
-          <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
+              Email address
             </label>
             <input
-              id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              name="email"
+              id="email"
               required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={email}
+              onChange={handleInputChange}
+              className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -111,29 +211,33 @@ export default function SignUpPage() {
               Password
             </label>
             <input
-              id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password"
+              id="password"
               required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              minLength={6}
+              value={password}
+              onChange={handleInputChange}
+              className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Creating account...' : 'Sign Up'}
-          </button>
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Testing Auth...' : 'Test AuthService'}
+            </button>
+          </div>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            Already have an account?{' '}
+            This is a temporary test page.{' '}
             <Link href="/auth/signin" className="font-medium text-blue-600 hover:text-blue-500">
-              Sign in
+              Back to signin
             </Link>
           </p>
         </div>

@@ -5,6 +5,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import type { User, CoachProfile, AthleteProfile } from '@/lib/supabase'
+import { AuthService } from '@/lib/authService'
 
 interface AuthContextType {
   user: SupabaseUser | null
@@ -109,59 +110,105 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe()
   }, [])
 
-const signUp = async (email: string, password: string, userData: { role: 'coach' | 'athlete', firstName: string, lastName: string }) => {
-  setLoading(true)
-  try {
-    // First, insert into pending_users table
-    const { error: pendingError } = await supabase
-      .from('pending_users')
-      .insert({
+  const signUp = async (email: string, password: string, userData: { role: 'coach' | 'athlete', firstName: string, lastName: string }) => {
+    setLoading(true)
+    try {
+      console.log('Starting signup process using AuthService for:', email)
+
+      // Use the new AuthService with enhanced security
+      const result = await AuthService.registerUser({
         email,
-        role: userData.role,
-        first_name: userData.firstName,
-        last_name: userData.lastName,
+        password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        role: userData.role
       })
 
-    if (pendingError) throw pendingError
+      if (result.error) {
+        console.error('Registration failed:', result.error.message)
+        throw new Error(result.error.message)
+      }
 
-    // Then create auth user (this will send verification email)
-    const { data, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    })
+      console.log('Registration successful, verification email sent')
+      alert('Please check your email and click the verification link to complete registration.')
 
-    if (authError) throw authError
-
-    // Update pending record with auth user ID
-    if (data.user) {
-      const { error: updateError } = await supabase
-        .from('pending_users')
-        .update({ auth_user_id: data.user.id })
-        .eq('email', email)
-
-      if (updateError) throw updateError
+    } catch (error) {
+      console.error('Error signing up:', error)
+      throw error
+    } finally {
+      setLoading(false)
     }
-
-    // User needs to verify email before they can sign in
-    alert('Please check your email and click the verification link to complete registration.')
-
-  } catch (error) {
-    console.error('Error signing up:', error)
-    throw error
-  } finally {
-    setLoading(false)
   }
-}
 
   const signIn = async (email: string, password: string) => {
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) throw error
+
+      // Check if this is a first-time login (user verified but not in public.users)
+      if (data.user) {
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', data.user.id)
+          .single()
+
+        if (!existingUser) {
+          console.log('First login detected, moving pending user data...')
+          
+          // Get pending user data
+          const { data: pendingUser, error: pendingError } = await supabase
+            .from('pending_users')
+            .select('*')
+            .eq('id', data.user.id)
+            .single()
+
+          if (pendingUser && !pendingError) {
+            // Move to users table
+            const { error: usersError } = await supabase.from('users').insert({
+              id: data.user.id,
+              email: pendingUser.email,
+              role: pendingUser.role,
+              first_name: pendingUser.first_name,
+              last_name: pendingUser.last_name
+            })
+
+            if (usersError) {
+              console.error('Error creating user profile:', usersError)
+              throw new Error('Failed to complete registration')
+            }
+
+            // Create profile based on role
+            if (pendingUser.role === 'coach') {
+              const { error: coachError } = await supabase.from('coach_profiles').insert({ 
+                user_id: data.user.id 
+              })
+              if (coachError) console.error('Error creating coach profile:', coachError)
+            } else {
+              const { error: athleteError } = await supabase.from('athlete_profiles').insert({ 
+                user_id: data.user.id 
+              })
+              if (athleteError) console.error('Error creating athlete profile:', athleteError)
+            }
+
+            // Clean up pending user
+            const { error: deleteError } = await supabase
+              .from('pending_users')
+              .delete()
+              .eq('id', data.user.id)
+            
+            if (deleteError) console.error('Error cleaning up pending user:', deleteError)
+            
+            console.log('User registration completed successfully')
+          }
+        }
+      }
+
     } catch (error) {
       console.error('Error signing in:', error)
       throw error
