@@ -37,92 +37,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const supabase = createClient()
 
-  const fetchProfile = useCallback(async (userId: string) => {
+const fetchProfile = useCallback(async (userId: string) => {
     try {
       console.log('=== STARTING PROFILE FETCH ===')
       console.log('Fetching profile for user ID:', userId)
-      console.log('Supabase client configured:', !!supabase)
       
-      // First, let's check if we can access the auth user
-      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
-      console.log('Current auth user:', currentUser?.id)
-      console.log('Auth error:', authError)
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database query timeout')), 10000)
+      );
+
+      // Test basic connectivity first
+      console.log('Testing auth.getUser()...')
+      const authUserPromise = supabase.auth.getUser()
+      const { data: authData, error: authError } = await Promise.race([authUserPromise, timeoutPromise]) as any
       
-      // Test basic database connectivity
-      console.log('Testing basic database connectivity...')
-      const { data: testData, error: testError } = await supabase
-        .from('users')
-        .select('count')
-        .limit(1)
-      
-      console.log('Database connectivity test:', { testData, testError })
-      
-      // Now try to fetch the specific user
-      console.log('Fetching user profile from database...')
-      const { data: userProfile, error: userError } = await supabase
+      console.log('Auth user result:', { user: authData?.user?.id, error: authError })
+
+      if (authError) {
+        console.error('Auth error:', authError)
+        throw authError
+      }
+
+      // Now try the users table query with timeout
+      console.log('Querying users table...')
+      const userQueryPromise = supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single()
 
-      console.log('User profile query result:')
-      console.log('- Data:', userProfile)
-      console.log('- Error:', userError)
-      console.log('- Error details:', userError ? {
-        message: userError.message,
-        code: userError.code,
-        details: userError.details,
-        hint: userError.hint
-      } : 'None')
+      const { data: userProfile, error: userError } = await Promise.race([userQueryPromise, timeoutPromise]) as any
+
+      console.log('User query result:', { 
+        data: userProfile, 
+        error: userError,
+        errorCode: userError?.code,
+        errorMessage: userError?.message
+      })
 
       if (userError) {
-        console.error('❌ User profile fetch failed:', userError)
-        
-        // Let's try to check if the user exists at all
-        console.log('Checking if user exists in database...')
-        const { data: allUsers, error: allUsersError } = await supabase
-          .from('users')
-          .select('id, email, role')
-        
-        console.log('All users in database:', allUsers)
-        console.log('All users error:', allUsersError)
-        
+        console.error('User profile fetch failed:', userError)
         throw userError
       }
 
       if (!userProfile) {
-        console.error('❌ No user profile found for ID:', userId)
+        console.error('No user profile found for ID:', userId)
         throw new Error('User profile not found')
       }
 
       console.log('✅ User profile found:', userProfile)
       setProfile(userProfile)
 
-      // Get role-specific profile
+      // Get role-specific profile with timeout
       if (userProfile.role === 'coach') {
         console.log('Fetching coach profile...')
-        const { data: coach, error: coachError } = await supabase
+        const coachQueryPromise = supabase
           .from('coach_profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
 
+        const { data: coach, error: coachError } = await Promise.race([coachQueryPromise, timeoutPromise]) as any
+
         console.log('Coach profile result:', { coach, coachError })
 
         if (coachError) {
-          console.error('Coach profile error:', coachError)
-          // For coaches, this might be OK if profile hasn't been created yet
-          console.log('Creating missing coach profile...')
-          const { data: newCoach, error: createError } = await supabase
-            .from('coach_profiles')
-            .insert({ user_id: userId })
-            .select()
-            .single()
-          
-          console.log('Coach profile creation result:', { newCoach, createError })
-          if (!createError && newCoach) {
-            setCoachProfile(newCoach)
-          }
+          console.error('Error fetching coach profile:', coachError)
         } else {
           console.log('✅ Coach profile found:', coach)
           setCoachProfile(coach)
@@ -130,28 +111,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAthleteProfile(null)
       } else {
         console.log('Fetching athlete profile...')
-        const { data: athlete, error: athleteError } = await supabase
+        const athleteQueryPromise = supabase
           .from('athlete_profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
 
+        const { data: athlete, error: athleteError } = await Promise.race([athleteQueryPromise, timeoutPromise]) as any
+
         console.log('Athlete profile result:', { athlete, athleteError })
 
         if (athleteError) {
-          console.error('Athlete profile error:', athleteError)
-          // For athletes, this might be OK if profile hasn't been created yet
-          console.log('Creating missing athlete profile...')
-          const { data: newAthlete, error: createError } = await supabase
-            .from('athlete_profiles')
-            .insert({ user_id: userId })
-            .select()
-            .single()
-          
-          console.log('Athlete profile creation result:', { newAthlete, createError })
-          if (!createError && newAthlete) {
-            setAthleteProfile(newAthlete)
-          }
+          console.error('Error fetching athlete profile:', athleteError)
         } else {
           console.log('✅ Athlete profile found:', athlete)
           setAthleteProfile(athlete)
@@ -160,22 +131,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('=== PROFILE FETCH COMPLETED ===')
-      console.log('Final state:', {
-        profile: !!profile,
-        coachProfile: !!coachProfile,
-        athleteProfile: !!athleteProfile
-      })
 
     } catch (error) {
       console.error('❌ CRITICAL ERROR in fetchProfile:', error)
       console.error('Error type:', typeof error)
       console.error('Error message:', error instanceof Error ? error.message : String(error))
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack')
       
-      // Set loading to false even on error so UI doesn't hang
+      // Make sure loading stops even on error
       setLoading(false)
     }
-  }, [supabase, profile, coachProfile, athleteProfile])
+  }, [supabase])
 
   const refreshProfile = useCallback(async () => {
     if (user) {
