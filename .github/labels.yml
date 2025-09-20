@@ -1,0 +1,173 @@
+# CIRFPRO GitHub Labels Configuration
+# Use with: gh label sync --file .github/labels.yml
+
+# Issue Types
+- name: "user-story"
+  color: "0E8A16"
+  description: "Individual user story"
+
+- name: "epic"
+  color: "5319E7"
+  description: "Collection of related user stories"
+
+- name: "bug"
+  color: "D73A4A"
+  description: "Something isn't working"
+
+- name: "enhancement"
+  color: "A2EEEF"
+  description: "New feature or request"
+
+- name: "technical-debt"
+  color: "FEF2C0"
+  description: "Code cleanup or refactoring needed"
+
+# Priority Levels
+- name: "priority: high"
+  color: "B60205"
+  description: "High priority - MVP features"
+
+- name: "priority: medium"
+  color: "FBCA04"
+  description: "Medium priority - Phase 2 features"
+
+- name: "priority: low"
+  color: "0E8A16"
+  description: "Low priority - Future phases"
+
+# Epic Categories
+- name: "epic: daily-training"
+  color: "C5DEF5"
+  description: "Daily training experience epic"
+
+- name: "epic: weekly-planning"
+  color: "C5DEF5"
+  description: "Weekly planning and tracking epic"
+
+- name: "epic: training-blocks"
+  color: "C5DEF5"
+  description: "Training block management epic"
+
+- name: "epic: goal-achievement"
+  color: "C5DEF5"
+  description: "Long-term goal achievement epic"
+
+- name: "epic: coach-planning"
+  color: "C5DEF5"
+  description: "Coach session planning epic"
+
+- name: "epic: coach-monitoring"
+  color: "C5DEF5"
+  description: "Coach monitoring and program management epic"
+
+- name: "epic: mobile-interface"
+  color: "C5DEF5"
+  description: "Mobile and interface experience epic"
+
+- name: "epic: periodization"
+  color: "C5DEF5"
+  description: "Periodization and program structure epic"
+
+- name: "epic: integration"
+  color: "C5DEF5"
+  description: "System integration and collaboration epic"
+
+- name: "epic: user-accounts"
+  color: "C5DEF5"
+  description: "User accounts and authentication epic"
+
+- name: "epic: athlete-assessment"
+  color: "C5DEF5"
+  description: "Athlete assessment and onboarding epic"
+
+- name: "epic: analytics"
+  color: "C5DEF5"
+  description: "Analytics and insights epic"
+
+# Status Labels
+- name: "status: needs-refinement"
+  color: "EDEDED"
+  description: "Needs more detail before development"
+
+- name: "status: ready"
+  color: "0E8A16"
+  description: "Ready for development"
+
+- name: "status: in-progress"
+  color: "FBCA04"
+  description: "Currently being worked on"
+
+- name: "status: in-review"
+  color: "FF9500"
+  description: "In code review or testing"
+
+- name: "status: blocked"
+  color: "D73A4A"
+  description: "Cannot proceed due to dependency"
+
+- name: "status: done"
+  color: "0E8A16"
+  description: "Completed and merged"
+
+# Development Phase
+- name: "phase: mvp"
+  color: "B60205"
+  description: "MVP - Months 1-12"
+
+- name: "phase: beta"
+  color: "FBCA04"
+  description: "Beta - Months 13-18"
+
+- name: "phase: production"
+  color: "0E8A16"
+  description: "Production - Months 19-24"
+
+- name: "phase: future"
+  color: "EDEDED"
+  description: "Future phases"
+
+# Technical Areas
+- name: "area: frontend"
+  color: "FF6B6B"
+  description: "Frontend/UI related"
+
+- name: "area: backend"
+  color: "4ECDC4"
+  description: "Backend/API related"
+
+- name: "area: database"
+  color: "45B7D1"
+  description: "Database related"
+
+- name: "area: auth"
+  color: "96CEB4"
+  description: "Authentication related"
+
+- name: "area: security"
+  color: "FFEAA7"
+  description: "Security related"
+
+- name: "area: performance"
+  color: "DDA0DD"
+  description: "Performance related"
+
+# Size Estimates
+- name: "size: xs"
+  color: "C2E0C6"
+  description: "Extra small - 1-2 hours"
+
+- name: "size: s"
+  color: "7FBC8C"
+  description: "Small - 1-2 days"
+
+- name: "size: m"
+  color: "547980"
+  description: "Medium - 3-5 days"
+
+- name: "size: l"
+  color: "594F4F"
+  description: "Large - 1-2 weeks"
+
+- name: "size: xl"
+  color: "45323B"
+  description: "Extra large - 2+ weeks"
