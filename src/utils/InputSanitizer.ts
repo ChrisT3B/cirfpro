@@ -42,8 +42,8 @@ export class InputSanitizer {
   /**
    * Comprehensive form data sanitization for CIRFPRO registration
    */
-  static sanitizeFormData(data: Record<string, any>): Record<string, any> {
-    const sanitized: Record<string, any> = {};
+  static sanitizeFormData(data: Record<string, unknown>): Record<string, unknown> {
+    const sanitized: Record<string, unknown> = {};
 
     Object.keys(data).forEach(key => {
       const value = data[key];
@@ -55,17 +55,19 @@ export class InputSanitizer {
 
       switch (key.toLowerCase()) {
         case 'email':
-          sanitized[key] = this.sanitizeEmail(value);
+          sanitized[key] = typeof value === 'string' ? this.sanitizeEmail(value) : value;
           break;
         case 'firstname':
         case 'first_name':
         case 'lastname':
         case 'last_name':
-          sanitized[key] = this.sanitizeName(value);
+          sanitized[key] = typeof value === 'string' ? this.sanitizeName(value) : value;
           break;
         case 'qualifications':
         case 'specializations':
-          sanitized[key] = Array.isArray(value) ? this.sanitizeStringArray(value) : [];
+          sanitized[key] = Array.isArray(value) && value.every(item => typeof item === 'string') 
+            ? this.sanitizeStringArray(value as string[]) 
+            : [];
           break;
         case 'role':
         case 'experience_level':

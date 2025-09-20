@@ -3,7 +3,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase'
 import { AuthService } from '@/lib/authService'
 
 export default function SignUpPage() {
@@ -75,13 +74,19 @@ export default function SignUpPage() {
 
       if (result.error) {
         setError(`AuthService error: ${result.error.message}`)
-      } else if (result.data) {
-        setError(`SUCCESS: User registered with ID ${result.data.id}. Check pending_users table!`)
+        // result.data is now a User object, not a simple object with id
+        const userId = typeof result.data === 'object' && result.data && 'id' in result.data 
+          ? (result.data as { id: string }).id 
+          : 'unknown'
+        setError(`SUCCESS: User registered with ID ${userId}. Check pending_users table!`)
+      } else {
+        setError('SUCCESS: User registration initiated. Check your email for verification.')
       }
 
-    } catch (err: any) {
+ } catch (err: unknown) {
       console.error('Exception during AuthService test:', err)
-      setError(`Exception: ${err.message}`)
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
+      setError(`Exception: ${errorMessage}`)
     } finally {
       setIsLoading(false)
     }

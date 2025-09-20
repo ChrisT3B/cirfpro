@@ -16,7 +16,7 @@ interface SignUpData {
   experienceLevel?: 'beginner' | 'intermediate' | 'advanced'
 }
 
-interface AuthResponse<T = any> {
+interface AuthResponse<T = unknown> {
   data: T | null
   error: AuthError | null
 }
@@ -46,7 +46,7 @@ export class AuthService {
       console.log('Input sanitization completed')
 
       // Step 2: Email validation
-      const emailValidation = SQLSecurityValidator.validateEmailForDB(sanitizedData.email)
+      const emailValidation = SQLSecurityValidator.validateEmailForDB(sanitizedData.email as string)
       if (!emailValidation.isValid) {
         return {
           data: null,
@@ -59,7 +59,7 @@ export class AuthService {
       }
 
       // Step 3: Role validation
-      const roleValidation = SQLSecurityValidator.validateRole(sanitizedData.role)
+      const roleValidation = SQLSecurityValidator.validateRole(sanitizedData.role as string)
       if (!roleValidation.isValid) {
         return {
           data: null,
@@ -73,7 +73,7 @@ export class AuthService {
 
       // Step 4: Experience level validation (for athletes)
       if (registerData.role === 'athlete' && registerData.experienceLevel) {
-        const experienceValidation = SQLSecurityValidator.validateExperienceLevel(sanitizedData.experienceLevel)
+        const experienceValidation = SQLSecurityValidator.validateExperienceLevel(sanitizedData.experienceLevel as string)
         if (!experienceValidation.isValid) {
           return {
             data: null,
@@ -204,7 +204,7 @@ console.log('Data types:', {
   /**
    * Verify email and complete user registration
    */
-  static async verifyEmail(token: string): Promise<{ success: boolean; message: string; user?: any }> {
+  static async verifyEmail(token: string): Promise<{ success: boolean; message: string; user?: unknown }> {
     try {
       console.log('Starting email verification')
 

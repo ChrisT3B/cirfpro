@@ -1,15 +1,13 @@
 // src/app/auth/signin/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
-import { useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-
-export default function SignInPage() {
+function SignInForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -17,40 +15,40 @@ export default function SignInPage() {
   const [message, setMessage] = useState<string | null>(null)
   const searchParams = useSearchParams()
   
-  // Handle URL parameters for verification messages
-useEffect(() => {
-  const error = searchParams.get('error')
-  const verified = searchParams.get('verified')
-  const message = searchParams.get('message')
-  
-  if (error) {
-    if (message) {
-      setError(decodeURIComponent(message))
-    } else {
-      switch (error) {
-        case 'verification_failed':
-          setError('Email verification failed. The link may have expired.')
-          break
-        case 'unexpected_error':
-          setError('An unexpected error occurred. Please try again.')
-          break
-        default:
-          setError('An error occurred during authentication.')
-      }
-    }
-  }
-  
-  if (verified === 'true') {
-    if (message) {
-      setMessage(decodeURIComponent(message))
-    } else {
-      setMessage('Email verified successfully! You can now sign in.')
-    }
-  }
-}, [searchParams])
-
   const { signIn } = useAuth()
   const router = useRouter()
+
+  // Handle URL parameters for verification messages
+  useState(() => {
+    const error = searchParams.get('error')
+    const verified = searchParams.get('verified')
+    const message = searchParams.get('message')
+    
+    if (error) {
+      if (message) {
+        setError(decodeURIComponent(message))
+      } else {
+        switch (error) {
+          case 'verification_failed':
+            setError('Email verification failed. The link may have expired.')
+            break
+          case 'unexpected_error':
+            setError('An unexpected error occurred. Please try again.')
+            break
+          default:
+            setError('An error occurred during authentication.')
+        }
+      }
+    }
+    
+    if (verified === 'true') {
+      if (message) {
+        setMessage(decodeURIComponent(message))
+      } else {
+        setMessage('Email verified successfully! You can now sign in.')
+      }
+    }
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,8 +58,9 @@ useEffect(() => {
     try {
       await signIn(email, password)
       router.push('/dashboard')
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -81,9 +80,9 @@ useEffect(() => {
           </div>
         )}
         {message && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        {message}
-        </div>
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            {message}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -127,7 +126,7 @@ useEffect(() => {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
               Sign up
             </Link>
@@ -135,5 +134,26 @@ useEffect(() => {
         </div>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SignInForm />
+    </Suspense>
   )
 }
