@@ -1,11 +1,10 @@
-// src/contexts/AuthContext.tsx
+// src/contexts/AuthContext.tsx - FIXED VERSION
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import type { User, CoachProfile, AthleteProfile } from '@/lib/supabase'
-import { AuthService } from '@/lib/authService'
 
 interface AuthContextType {
   user: SupabaseUser | null
@@ -40,6 +39,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId)
+      
       // Get user profile
       const { data: userProfile, error: userError } = await supabase
         .from('users')
@@ -47,32 +48,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .single()
 
-      if (userError) throw userError
+      if (userError) {
+        console.error('Error fetching user profile:', userError)
+        throw userError
+      }
 
+      console.log('User profile found:', userProfile)
       setProfile(userProfile)
 
       // Get role-specific profile
       if (userProfile.role === 'coach') {
+        console.log('Fetching coach profile...')
         const { data: coach, error: coachError } = await supabase
           .from('coach_profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
 
-        if (!coachError) setCoachProfile(coach)
+        if (coachError) {
+          console.error('Error fetching coach profile:', coachError)
+        } else {
+          console.log('Coach profile found:', coach)
+          setCoachProfile(coach)
+        }
         setAthleteProfile(null)
       } else {
+        console.log('Fetching athlete profile...')
         const { data: athlete, error: athleteError } = await supabase
           .from('athlete_profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
 
-        if (!athleteError) setAthleteProfile(athlete)
+        if (athleteError) {
+          console.error('Error fetching athlete profile:', athleteError)
+        } else {
+          console.log('Athlete profile found:', athlete)
+          setAthleteProfile(athlete)
+        }
         setCoachProfile(null)
       }
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      console.error('Error in fetchProfile:', error)
+      // Don't throw here, just log the error
     }
   }, [supabase])
 
@@ -83,31 +101,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, fetchProfile])
 
   useEffect(() => {
+    let mounted = true
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error getting session:', error)
+          setLoading(false)
+          return
+        }
+
+        if (mounted) {
+          setUser(session?.user ?? null)
+          if (session?.user) {
+            await fetchProfile(session.user.id)
+          }
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Error in getInitialSession:', error)
+        if (mounted) {
+          setLoading(false)
+        }
       }
-      setLoading(false)
-    })
+    }
+
+    getInitialSession()
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
+      console.log('Auth state changed:', event, session?.user?.id)
       
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-        setCoachProfile(null)
-        setAthleteProfile(null)
+      if (mounted) {
+        setUser(session?.user ?? null)
+        
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        } else {
+          setProfile(null)
+          setCoachProfile(null)
+          setAthleteProfile(null)
+        }
+        
+        setLoading(false)
       }
-      
-      setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [fetchProfile, supabase.auth])
 
   const signUp = async (email: string, password: string, userData: { role: 'coach' | 'athlete', firstName: string, lastName: string }) => {
@@ -115,7 +161,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Starting signup process using AuthService for:', email)
 
-      // Use the new AuthService with enhanced security
+      // Import AuthService dynamically to avoid import issues
+      const { AuthService } = await import('@/lib/authService')
+
       const result = await AuthService.registerUser({
         email,
         password,
@@ -143,71 +191,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     setLoading(true)
     try {
+      console.log('Starting sign in for:', email)
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
-
-      // Check if this is a first-time login (user verified but not in public.users)
-      if (data.user) {
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', data.user.id)
-          .single()
-
-        if (!existingUser) {
-          console.log('First login detected, moving pending user data...')
-          
-          // Get pending user data
-          const { data: pendingUser, error: pendingError } = await supabase
-            .from('pending_users')
-            .select('*')
-            .eq('id', data.user.id)
-            .single()
-
-          if (pendingUser && !pendingError) {
-            // Move to users table
-            const { error: usersError } = await supabase.from('users').insert({
-              id: data.user.id,
-              email: pendingUser.email,
-              role: pendingUser.role,
-              first_name: pendingUser.first_name,
-              last_name: pendingUser.last_name
-            })
-
-            if (usersError) {
-              console.error('Error creating user profile:', usersError)
-              throw new Error('Failed to complete registration')
-            }
-
-            // Create profile based on role
-            if (pendingUser.role === 'coach') {
-              const { error: coachError } = await supabase.from('coach_profiles').insert({ 
-                user_id: data.user.id 
-              })
-              if (coachError) console.error('Error creating coach profile:', coachError)
-            } else {
-              const { error: athleteError } = await supabase.from('athlete_profiles').insert({ 
-                user_id: data.user.id 
-              })
-              if (athleteError) console.error('Error creating athlete profile:', athleteError)
-            }
-
-            // Clean up pending user
-            const { error: deleteError } = await supabase
-              .from('pending_users')
-              .delete()
-              .eq('id', data.user.id)
-            
-            if (deleteError) console.error('Error cleaning up pending user:', deleteError)
-            
-            console.log('User registration completed successfully')
-          }
-        }
+      if (error) {
+        console.error('Sign in error:', error)
+        throw error
       }
+
+      if (!data.user) {
+        throw new Error('No user data returned from sign in')
+      }
+
+      console.log('Sign in successful for user:', data.user.id)
+      
+      // The auth state change listener will handle fetching the profile
+      // No need to do anything else here
 
     } catch (error) {
       console.error('Error signing in:', error)
