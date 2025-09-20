@@ -67,28 +67,42 @@ function SignInForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cirfpro-gray-100 via-white to-cirfpro-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
         {/* CIRFPRO Logo/Branding */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-24 h-24 bg-cirfpro-green rounded-full flex items-center justify-center mb-4 shadow-lg">
-            <div className="text-white text-3xl font-bold font-open-sans">C</div>
+          <div className="mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-4 shadow-xl relative overflow-hidden" 
+               style={{ background: 'linear-gradient(135deg, #29b643 0%, #1f8c33 100%)' }}>
+            {/* CIRFPRO Arrow Logo */}
+            <svg className="w-12 h-12" viewBox="0 0 100 100" fill="none">
+              <path 
+                d="M25 35 C35 25, 65 25, 75 35 C75 45, 65 55, 55 55 L45 55 L50 65 L40 55 L50 45 C55 45, 65 45, 65 35 C60 30, 40 30, 35 35 C35 40, 40 45, 45 45"
+                fill="#5a5e64"
+                fillOpacity="0.8"
+              />
+            </svg>
+            {/* Subtle pulse animation */}
+            <div className="absolute inset-0 rounded-full animate-pulse" 
+                 style={{ background: 'rgba(255,255,255,0.1)' }}></div>
           </div>
-          <h1 className="text-4xl font-bold text-cirfpro-gray-800 font-open-sans">
-            CIRFPRO
+          <h1 className="text-4xl font-bold font-open-sans" 
+              style={{ background: 'linear-gradient(135deg, #29b643, #5a5e64)', 
+                       WebkitBackgroundClip: 'text', 
+                       WebkitTextFillColor: 'transparent' }}>
+            Cirfpro
           </h1>
-          <p className="text-cirfpro-gray-600 mt-2 font-open-sans">
+          <p className="mt-2 font-open-sans" style={{ color: '#5a5e64' }}>
             Professional Running Coaching Platform
           </p>
         </div>
 
         {/* Sign In Form Card */}
-        <div className="bg-white rounded-xl shadow-xl border border-cirfpro-gray-200 p-8">
+        <div className="bg-white rounded-xl shadow-xl border-2 p-8" style={{ borderColor: '#e5e7eb' }}>
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-semibold text-cirfpro-gray-800 font-open-sans">
+            <h2 className="text-2xl font-semibold font-open-sans" style={{ color: '#5a5e64' }}>
               Welcome Back
             </h2>
-            <p className="text-cirfpro-gray-600 mt-1 font-open-sans">
+            <p className="mt-1 font-open-sans" style={{ color: '#6b7280' }}>
               Sign in to your account
             </p>
           </div>
@@ -106,7 +120,8 @@ function SignInForm() {
           )}
           
           {message && (
-            <div className="bg-cirfpro-green-50 border border-cirfpro-green-200 text-cirfpro-green-700 px-4 py-3 rounded-lg mb-4 font-open-sans">
+            <div className="px-4 py-3 rounded-lg mb-4 font-open-sans" 
+                 style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', color: '#15803d', border: '1px solid' }}>
               <div className="flex items-center">
                 <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -118,7 +133,7 @@ function SignInForm() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-cirfpro-gray-700 mb-2 font-open-sans">
+              <label htmlFor="email" className="block text-sm font-medium mb-2 font-open-sans" style={{ color: '#5a5e64' }}>
                 Email Address
               </label>
               <input
@@ -127,16 +142,27 @@ function SignInForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-cirfpro-gray-300 rounded-lg shadow-sm 
-                         focus:outline-none focus:ring-2 focus:ring-cirfpro-green focus:border-cirfpro-green
-                         transition-colors duration-200 font-open-sans
-                         placeholder-cirfpro-gray-400"
+                className="w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 font-open-sans
+                         focus:outline-none focus:ring-2 focus:border-transparent"
+                style={{ 
+                  borderColor: '#d1d5db'
+                }}
+                onFocus={(e) => {
+                  const target = e.target as HTMLInputElement
+                  target.style.borderColor = '#29b643'
+                  target.style.boxShadow = '0 0 0 2px rgba(41, 182, 67, 0.2)'
+                }}
+                onBlur={(e) => {
+                  const target = e.target as HTMLInputElement
+                  target.style.borderColor = '#d1d5db'
+                  target.style.boxShadow = 'none'
+                }}
                 placeholder="coach@example.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-cirfpro-gray-700 mb-2 font-open-sans">
+              <label htmlFor="password" className="block text-sm font-medium mb-2 font-open-sans" style={{ color: '#5a5e64' }}>
                 Password
               </label>
               <input
@@ -145,10 +171,21 @@ function SignInForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-cirfpro-gray-300 rounded-lg shadow-sm 
-                         focus:outline-none focus:ring-2 focus:ring-cirfpro-green focus:border-cirfpro-green
-                         transition-colors duration-200 font-open-sans
-                         placeholder-cirfpro-gray-400"
+                className="w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 font-open-sans
+                         focus:outline-none focus:ring-2 focus:border-transparent"
+                style={{ 
+                  borderColor: '#d1d5db'
+                }}
+                onFocus={(e) => {
+                  const target = e.target as HTMLInputElement
+                  target.style.borderColor = '#29b643'
+                  target.style.boxShadow = '0 0 0 2px rgba(41, 182, 67, 0.2)'
+                }}
+                onBlur={(e) => {
+                  const target = e.target as HTMLInputElement
+                  target.style.borderColor = '#d1d5db'
+                  target.style.boxShadow = 'none'
+                }}
                 placeholder="Enter your password"
               />
             </div>
@@ -156,12 +193,25 @@ function SignInForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-cirfpro-green hover:bg-cirfpro-green-600 
-                       disabled:bg-cirfpro-gray-300 disabled:cursor-not-allowed
-                       text-white font-semibold py-3 px-4 rounded-lg
-                       transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]
-                       focus:outline-none focus:ring-2 focus:ring-cirfpro-green-500 focus:ring-offset-2
-                       shadow-lg hover:shadow-xl font-open-sans"
+              className="w-full font-semibold py-3 px-4 rounded-lg transition-all duration-200 
+                       transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none 
+                       shadow-lg hover:shadow-xl font-open-sans disabled:cursor-not-allowed"
+              style={{ 
+                background: isLoading ? '#9ca3af' : 'linear-gradient(135deg, #29b643 0%, #1f8c33 100%)',
+                color: 'white'
+              }}
+              onMouseEnter={(e) => {
+                const target = e.target as HTMLButtonElement
+                if (!isLoading) {
+                  target.style.background = 'linear-gradient(135deg, #1f8c33 0%, #166425 100%)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                const target = e.target as HTMLButtonElement
+                if (!isLoading) {
+                  target.style.background = 'linear-gradient(135deg, #29b643 0%, #1f8c33 100%)'
+                }
+              }}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
@@ -179,22 +229,38 @@ function SignInForm() {
 
           {/* Additional Links */}
           <div className="mt-6 text-center space-y-2">
-            <p className="text-sm text-cirfpro-gray-600 font-open-sans">
+            <p className="text-sm font-open-sans" style={{ color: '#6b7280' }}>
               Don&apos;t have an account?{' '}
               <Link 
                 href="/auth/signup" 
-                className="font-semibold text-cirfpro-green hover:text-cirfpro-green-600 
-                         transition-colors duration-200 hover:underline"
+                className="font-semibold transition-colors duration-200 hover:underline"
+                style={{ color: '#29b643' }}
+                onMouseEnter={(e) => {
+                  const target = e.target as HTMLAnchorElement
+                  target.style.color = '#1f8c33'
+                }}
+                onMouseLeave={(e) => {
+                  const target = e.target as HTMLAnchorElement
+                  target.style.color = '#29b643'
+                }}
               >
                 Sign up now
               </Link>
             </p>
-            <p className="text-xs text-cirfpro-gray-500 font-open-sans">
+            <p className="text-xs font-open-sans" style={{ color: '#9ca3af' }}>
               Forgot your password?{' '}
               <Link 
                 href="#" 
-                className="text-cirfpro-green hover:text-cirfpro-green-600 
-                         transition-colors duration-200 hover:underline"
+                className="transition-colors duration-200 hover:underline"
+                style={{ color: '#29b643' }}
+                onMouseEnter={(e) => {
+                  const target = e.target as HTMLAnchorElement
+                  target.style.color = '#1f8c33'
+                }}
+                onMouseLeave={(e) => {
+                  const target = e.target as HTMLAnchorElement
+                  target.style.color = '#29b643'
+                }}
               >
                 Reset it here
               </Link>
@@ -204,7 +270,7 @@ function SignInForm() {
 
         {/* Footer */}
         <div className="text-center mt-8">
-          <p className="text-sm text-cirfpro-gray-500 font-open-sans">
+          <p className="text-sm font-open-sans" style={{ color: '#9ca3af' }}>
             © 2025 CIRFPRO. Professional running coaching platform.
           </p>
         </div>
@@ -215,13 +281,14 @@ function SignInForm() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cirfpro-gray-100 via-white to-cirfpro-green-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-green-50 flex items-center justify-center">
       <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-md">
         <div className="text-center">
-          <div className="w-12 h-12 bg-cirfpro-green rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+               style={{ background: 'linear-gradient(135deg, #29b643 0%, #1f8c33 100%)' }}>
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
           </div>
-          <p className="text-cirfpro-gray-600 font-open-sans">Loading...</p>
+          <p className="font-open-sans" style={{ color: '#6b7280' }}>Loading...</p>
         </div>
       </div>
     </div>
