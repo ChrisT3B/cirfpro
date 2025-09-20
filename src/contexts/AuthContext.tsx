@@ -34,155 +34,111 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [coachProfile, setCoachProfile] = useState<CoachProfile | null>(null)
   const [athleteProfile, setAthleteProfile] = useState<AthleteProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  // Add this line with your other useState declarations
+  const [profileLoaded, setProfileLoaded] = useState(false)
 
   const supabase = createClient()
 
-const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string, forceRefresh = false) => {
+    // Skip if profile already loaded and not forcing refresh
+    if (profileLoaded && !forceRefresh) {
+      console.log('✅ Profile already loaded, skipping fetch')
+      setLoading(false)
+      return
+    }
+
     try {
-      console.log('=== STARTING PROFILE FETCH ===')
-      console.log('Fetching profile for user ID:', userId)
+      console.log('=== FETCHING PROFILE FOR:', userId, '===')
       
-      // Add timeout to prevent hanging
-      const createTimeoutPromise = () => new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Database query timeout')), 10000)
-      );
-
-      // Test basic connectivity first
-      console.log('Testing auth.getUser()...')
-      const authUserPromise = supabase.auth.getUser()
+      // Validate current auth session
+      console.log('Validating auth session...')
+      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
       
-      try {
-        const { data: authData, error: authError } = await Promise.race([
-          authUserPromise, 
-          createTimeoutPromise()
-        ])
-        
-        console.log('Auth user result:', { user: authData?.user?.id, error: authError })
-
-        if (authError) {
-          console.error('Auth error:', authError)
-          throw authError
-        }
-      } catch (error) {
-        if (error instanceof Error && error.message === 'Database query timeout') {
-          console.error('❌ Auth query timed out')
-          throw new Error('Authentication check timed out')
-        }
-        throw error
+      if (authError || !currentUser || currentUser.id !== userId) {
+        console.error('Auth validation failed:', authError?.message || 'User mismatch')
+        setLoading(false)
+        return
       }
+      
+      console.log('✅ Auth session valid, fetching profile...')
 
-      // Now try the users table query with timeout
-      console.log('Querying users table...')
-      const userQueryPromise = supabase
+      // Now fetch user profile
+      const { data: userProfile, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single()
 
-      try {
-        const { data: userProfile, error: userError } = await Promise.race([
-          userQueryPromise, 
-          createTimeoutPromise()
-        ])
+      console.log('User query result:', { 
+        found: !!userProfile, 
+        error: userError?.message,
+        role: userProfile?.role
+      })
 
-        console.log('User query result:', { 
-          data: userProfile, 
-          error: userError,
-          errorCode: userError?.code,
-          errorMessage: userError?.message
-        })
-
-        if (userError) {
-          console.error('User profile fetch failed:', userError)
-          throw userError
-        }
-
-        if (!userProfile) {
-          console.error('No user profile found for ID:', userId)
-          throw new Error('User profile not found')
-        }
-
-        console.log('✅ User profile found:', userProfile)
-        setProfile(userProfile)
-
-        // Get role-specific profile with timeout
-        if (userProfile.role === 'coach') {
-          console.log('Fetching coach profile...')
-          const coachQueryPromise = supabase
-            .from('coach_profiles')
-            .select('*')
-            .eq('user_id', userId)
-            .single()
-
-          try {
-            const { data: coach, error: coachError } = await Promise.race([
-              coachQueryPromise, 
-              createTimeoutPromise()
-            ])
-
-            console.log('Coach profile result:', { coach, coachError })
-
-            if (coachError) {
-              console.error('Error fetching coach profile:', coachError)
-            } else {
-              console.log('✅ Coach profile found:', coach)
-              setCoachProfile(coach)
-            }
-          } catch (error) {
-            console.error('Coach profile query failed:', error)
-          }
-          setAthleteProfile(null)
-        } else {
-          console.log('Fetching athlete profile...')
-          const athleteQueryPromise = supabase
-            .from('athlete_profiles')
-            .select('*')
-            .eq('user_id', userId)
-            .single()
-
-          try {
-            const { data: athlete, error: athleteError } = await Promise.race([
-              athleteQueryPromise, 
-              createTimeoutPromise()
-            ])
-
-            console.log('Athlete profile result:', { athlete, athleteError })
-
-            if (athleteError) {
-              console.error('Error fetching athlete profile:', athleteError)
-            } else {
-              console.log('✅ Athlete profile found:', athlete)
-              setAthleteProfile(athlete)
-            }
-          } catch (error) {
-            console.error('Athlete profile query failed:', error)
-          }
-          setCoachProfile(null)
-        }
-        
-        console.log('=== PROFILE FETCH COMPLETED ===')
-        
-      } catch (error) {
-        if (error instanceof Error && error.message === 'Database query timeout') {
-          console.error('❌ User query timed out')
-          throw new Error('User profile query timed out')
-        }
-        throw error
+      if (userError) {
+        console.error('User profile fetch failed:', userError)
+        setLoading(false)
+        return
       }
 
-    } catch (error) {
-      console.error('❌ CRITICAL ERROR in fetchProfile:', error)
-      console.error('Error type:', typeof error)
-      console.error('Error message:', error instanceof Error ? error.message : String(error))
+      if (!userProfile) {
+        console.error('No user profile found')
+        setLoading(false)
+        return
+      }
+
+      console.log('✅ User profile found:', userProfile.email, userProfile.role)
+      setProfile(userProfile)
+
+      // Get role-specific profile
+      if (userProfile.role === 'coach') {
+        console.log('Fetching coach profile...')
+        const { data: coach, error: coachError } = await supabase
+          .from('coach_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+
+        if (!coachError && coach) {
+          console.log('✅ Coach profile found')
+          setCoachProfile(coach)
+        } else {
+          console.log('Coach profile error:', coachError?.message)
+        }
+        setAthleteProfile(null)
+      } else {
+        console.log('Fetching athlete profile...')
+        const { data: athlete, error: athleteError } = await supabase
+          .from('athlete_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+
+        if (!athleteError && athlete) {
+          console.log('✅ Athlete profile found')
+          setAthleteProfile(athlete)
+        } else {
+          console.log('Athlete profile error:', athleteError?.message)
+        }
+        setCoachProfile(null)
+      }
       
-      // Make sure loading stops even on error
+      // Mark profile as loaded
+      setProfileLoaded(true)
+      console.log('=== PROFILE FETCH COMPLETED ===')
+      setLoading(false)
+
+    } catch (error) {
+      console.error('❌ Error in fetchProfile:', error)
       setLoading(false)
     }
-  }, [supabase])
+  }, [supabase, profileLoaded])
 
-  const refreshProfile = useCallback(async () => {
-    if (user) {
-      await fetchProfile(user.id)
+    const refreshProfile = useCallback(async () => {
+      if (user) {
+     console.log('Manual profile refresh requested')
+      setProfileLoaded(false)
+      await fetchProfile(user.id, true)
     }
   }, [user, fetchProfile])
 
@@ -227,17 +183,25 @@ const fetchProfile = useCallback(async (userId: string) => {
       if (mounted) {
         setUser(session?.user ?? null)
         
-        if (session?.user) {
-          console.log('Auth state change - fetching profile for:', session.user.id)
-          await fetchProfile(session.user.id)
-        } else {
-          console.log('Auth state change - clearing profiles')
-          setProfile(null)
-          setCoachProfile(null)
-          setAthleteProfile(null)
-        }
-        
-        setLoading(false)
+        // Only fetch profile on significant events, not token refreshes
+    if (event === 'SIGNED_IN' && session?.user) {
+      console.log('Sign in detected - fetching profile')
+      setProfileLoaded(false) // Reset loaded state
+      await fetchProfile(session.user.id, true) // Force refresh
+    } else if (event === 'SIGNED_OUT') {
+      console.log('Sign out detected - clearing profiles')
+      setProfile(null)
+      setCoachProfile(null)
+      setAthleteProfile(null)
+      setProfileLoaded(false)
+      setLoading(false)
+    } else if (event === 'INITIAL_SESSION' && session?.user) {
+      console.log('Initial session detected')
+      await fetchProfile(session.user.id, false) // Don't force if already loaded
+    } else if (event === 'TOKEN_REFRESHED') {
+      console.log('Token refreshed - no profile fetch needed')
+      // Just update user, don't refetch profile
+    }
       }
     })
 
