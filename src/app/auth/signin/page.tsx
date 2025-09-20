@@ -180,7 +180,7 @@ function SignInForm() {
           {/* Additional Links */}
           <div className="mt-6 text-center space-y-2">
             <p className="text-sm text-cirfpro-gray-600 font-open-sans">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link 
                 href="/auth/signup" 
                 className="font-semibold text-cirfpro-green hover:text-cirfpro-green-600 
