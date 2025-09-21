@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface CoachData {
   id: string
@@ -23,7 +24,7 @@ interface CoachLayoutProps {
 }
 
 export default function CoachLayout({ children }: CoachLayoutProps) {
-  const { user, profile, coachProfile } = useAuth()
+  const { user, profile } = useAuth()
   const params = useParams()
   const pathname = usePathname()
   const slug = params.slug as string
@@ -32,7 +33,7 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const isPublicRoute = pathname.includes('/profile') || 
+  const _isPublicRoute = pathname.includes('/profile') || 
                        pathname.includes('/methodology') || 
                        pathname.includes('/reviews')
   const isOwner = coachData && profile?.role === 'coach' && 
@@ -66,7 +67,7 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
           // This user owns this workspace
         }
         
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load coach profile')
       } finally {
         setLoading(false)
@@ -115,7 +116,7 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
             {/* Coach Identity */}
             <div className="flex items-center space-x-4">
               {coachData.profile_photo_url && (
-                <img
+                <Image
                   src={coachData.profile_photo_url}
                   alt={displayName}
                   className="w-10 h-10 rounded-full object-cover"

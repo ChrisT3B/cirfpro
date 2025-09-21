@@ -4,6 +4,7 @@
 import { createClient } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface CoachListing {
   id: string
@@ -99,10 +100,12 @@ export default function CoachDirectoryPage() {
         <div className="text-center mb-8">
           {/* Logo */}
           <div className="flex justify-center mb-6">
-            <img
-              src="/images/cirfpro-logo2.svg"
-              alt="Cirfpro"
-              className="h-16 w-auto"
+            <Image               
+            src="/images/cirfpro-logo2.svg"               
+            alt="Cirfpro"               
+            width={64}
+            height={64}
+            className="h-16 w-auto"             
             />
           </div>
           <h1 className="text-3xl font-bold text-[#5a5e64] mb-4">
@@ -197,10 +200,12 @@ export default function CoachDirectoryPage() {
                     {/* Coach Header */}
                     <div className="flex items-center space-x-4 mb-4">
                       {coach.profile_photo_url ? (
-                        <img
-                          src={coach.profile_photo_url}
-                          alt={displayName}
-                          className="w-16 h-16 rounded-full object-cover"
+                        <Image
+                        src={coach.profile_photo_url}
+                        alt={displayName}
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 rounded-full object-cover"
                         />
                       ) : (
                         <div className="w-16 h-16 bg-[#29b643] bg-opacity-10 rounded-full flex items-center justify-center">

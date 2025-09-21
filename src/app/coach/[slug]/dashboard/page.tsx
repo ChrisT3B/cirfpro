@@ -104,9 +104,9 @@ export default function CoachDashboardPage() {
           // Transform the data to flatten the user info
           const transformedAthletes = athletesData?.map(athlete => ({
             id: athlete.id,
-            first_name: (athlete.users as any).first_name || '',
-            last_name: (athlete.users as any).last_name || '',
-            email: (athlete.users as any).email || '',
+            first_name: (athlete.users as { first_name?: string }).first_name || '',
+            last_name: (athlete.users as { last_name?: string }).last_name || '',
+            email: (athlete.users as { email?: string }).email || '',
             experience_level: athlete.experience_level,
             goal_race_distance: athlete.goal_race_distance,
             created_at: athlete.created_at
@@ -132,7 +132,7 @@ export default function CoachDashboardPage() {
     if (!authLoading && !unauthorized && coachProfile) {
       fetchDashboardData()
     }
-  }, [coachProfile, authLoading, unauthorized])
+  }, [coachProfile, authLoading, unauthorized, slug])
 
   if (authLoading || loading) {
     return (
@@ -154,7 +154,7 @@ export default function CoachDashboardPage() {
       <div className="text-center py-12">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
         <p className="text-gray-600 mb-4">
-          You don't have permission to view this coach's workspace.
+          You don&apos;t have permission to view this coach&apos;s workspace.
         </p>
         <button
           onClick={() => router.push('/dashboard')}
@@ -246,7 +246,7 @@ export default function CoachDashboardPage() {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">This Week's Sessions</p>
+              <p className="text-sm font-medium text-gray-600">This Week&apos;s Sessions</p>
               <p className="text-2xl font-semibold text-gray-900">{stats.this_week_sessions}</p>
             </div>
           </div>

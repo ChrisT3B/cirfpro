@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import Image from 'next/image'
 
 interface CoachProfile {
   id: string
@@ -93,11 +94,13 @@ export default function CoachProfilePage() {
             {/* Profile Photo */}
             <div className="flex-shrink-0">
               {coachProfile.profile_photo_url ? (
-                <img
-                  src={coachProfile.profile_photo_url}
-                  alt={displayName}
-                  className="w-24 h-24 rounded-full object-cover"
-                />
+            <Image
+            src={coachProfile.profile_photo_url}
+            alt={displayName}
+            width={96}
+            height={96}
+            className="w-24 h-24 rounded-full object-cover"
+            />
               ) : (
                 <div className="w-24 h-24 bg-[#29b643] bg-opacity-10 rounded-full flex items-center justify-center">
                   <span className="text-2xl font-semibold text-[#29b643]">
@@ -249,7 +252,7 @@ export default function CoachProfilePage() {
             <svg className="mx-auto h-12 w-12 text-[#29b643] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <p>This coach hasn't added their coaching philosophy yet.</p>
+            <p>This coach hasn&apos;t added their coaching philosophy yet.</p>
             <p className="text-sm mt-2">Contact them to learn more about their approach to coaching.</p>
           </div>
         </div>
