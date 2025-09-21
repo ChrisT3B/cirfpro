@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - ENHANCED DEBUG VERSION
+// src/contexts/AuthContext.tsx - JWT-FIRST ARCHITECTURE
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
@@ -34,118 +34,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [coachProfile, setCoachProfile] = useState<CoachProfile | null>(null)
   const [athleteProfile, setAthleteProfile] = useState<AthleteProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  // Add this line with your other useState declarations
-  const [profileLoaded, setProfileLoaded] = useState(false)
 
   const supabase = createClient()
 
-  const fetchProfile = useCallback(async (userId: string, forceRefresh = false) => {
-    // Skip if profile already loaded and not forcing refresh
-    if (profileLoaded && !forceRefresh) {
-      console.log('✅ Profile already loaded, skipping fetch')
-      setLoading(false)
-      return
+  // Extract user profile from JWT token - NO DATABASE CALLS
+  const extractProfileFromJWT = useCallback((user: SupabaseUser): User => {
+    console.log('Extracting profile from JWT for:', user.email)
+    
+    return {
+      id: user.id,
+      email: user.email!,
+      role: user.user_metadata.role as 'coach' | 'athlete',
+      first_name: user.user_metadata.first_name || '',
+      last_name: user.user_metadata.last_name || '',
+      created_at: user.created_at,
+      updated_at: new Date().toISOString()
     }
+  }, [])
 
+  // Fetch detailed profiles ONLY when needed (lazy loading)
+  const fetchDetailedProfiles = useCallback(async (userId: string, role: 'coach' | 'athlete') => {
     try {
-      console.log('=== FETCHING PROFILE FOR:', userId, '===')
+      console.log('Fetching detailed profile for:', role)
       
-      // Validate current auth session
-      console.log('Validating auth session...')
-      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError || !currentUser || currentUser.id !== userId) {
-        console.error('Auth validation failed:', authError?.message || 'User mismatch')
-        setLoading(false)
-        return
-      }
-      
-      console.log('✅ Auth session valid, fetching profile...')
-
-      // Now fetch user profile
-      const { data: userProfile, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      console.log('User query result:', { 
-        found: !!userProfile, 
-        error: userError?.message,
-        role: userProfile?.role
-      })
-
-      if (userError) {
-        console.error('User profile fetch failed:', userError)
-        setLoading(false)
-        return
-      }
-
-      if (!userProfile) {
-        console.error('No user profile found')
-        setLoading(false)
-        return
-      }
-
-      console.log('✅ User profile found:', userProfile.email, userProfile.role)
-      setProfile(userProfile)
-
-      // Get role-specific profile
-      if (userProfile.role === 'coach') {
-        console.log('Fetching coach profile...')
-        const { data: coach, error: coachError } = await supabase
+      if (role === 'coach') {
+        const { data: coach, error } = await supabase
           .from('coach_profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
 
-        if (!coachError && coach) {
-          console.log('✅ Coach profile found')
+        if (!error && coach) {
           setCoachProfile(coach)
-        } else {
-          console.log('Coach profile error:', coachError?.message)
+          console.log('Coach profile loaded')
         }
-        setAthleteProfile(null)
       } else {
-        console.log('Fetching athlete profile...')
-        const { data: athlete, error: athleteError } = await supabase
+        const { data: athlete, error } = await supabase
           .from('athlete_profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
 
-        if (!athleteError && athlete) {
-          console.log('✅ Athlete profile found')
+        if (!error && athlete) {
           setAthleteProfile(athlete)
-        } else {
-          console.log('Athlete profile error:', athleteError?.message)
+          console.log('Athlete profile loaded')
         }
-        setCoachProfile(null)
       }
-      
-      // Mark profile as loaded
-      setProfileLoaded(true)
-      console.log('=== PROFILE FETCH COMPLETED ===')
-      setLoading(false)
-
     } catch (error) {
-      console.error('❌ Error in fetchProfile:', error)
-      setLoading(false)
+      console.error('Error fetching detailed profile:', error)
     }
-  }, [supabase, profileLoaded])
+  }, [supabase])
 
-    const refreshProfile = useCallback(async () => {
-      if (user) {
-     console.log('Manual profile refresh requested')
-      setProfileLoaded(false)
-      await fetchProfile(user.id, true)
+  const refreshProfile = useCallback(async () => {
+    if (user && profile) {
+      console.log('Refreshing detailed profiles')
+      await fetchDetailedProfiles(user.id, profile.role)
     }
-  }, [user, fetchProfile])
+  }, [user, profile, fetchDetailedProfiles])
 
   useEffect(() => {
     let mounted = true
 
-    // Get initial session
+    // Get initial session - JWT ONLY
     const getInitialSession = async () => {
       try {
         console.log('Getting initial session...')
@@ -157,13 +107,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return
         }
 
-        console.log('Initial session:', session?.user?.id)
-
-        if (mounted) {
-          setUser(session?.user ?? null)
-          if (session?.user) {
-            await fetchProfile(session.user.id)
-          }
+        if (mounted && session?.user) {
+          console.log('Session found, extracting profile from JWT')
+          setUser(session.user)
+          
+          // Extract profile from JWT - INSTANT
+          const profileFromJWT = extractProfileFromJWT(session.user)
+          setProfile(profileFromJWT)
+          
+          console.log('Profile extracted from JWT:', profileFromJWT)
+          
+          // Fetch detailed profiles in background (non-blocking)
+          fetchDetailedProfiles(session.user.id, profileFromJWT.role)
+          
+          setLoading(false) // User can navigate immediately
+        } else {
           setLoading(false)
         }
       } catch (error) {
@@ -176,32 +134,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     getInitialSession()
 
-    // Listen for auth changes
+    // Listen for auth changes - JWT ONLY
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state changed:', event, session?.user?.id)
+      console.log('Auth state changed:', event)
       
       if (mounted) {
-        setUser(session?.user ?? null)
-        
-        // Only fetch profile on significant events, not token refreshes
-    if (event === 'SIGNED_IN' && session?.user) {
-      console.log('Sign in detected - fetching profile')
-      setProfileLoaded(false) // Reset loaded state
-      await fetchProfile(session.user.id, true) // Force refresh
-    } else if (event === 'SIGNED_OUT') {
-      console.log('Sign out detected - clearing profiles')
-      setProfile(null)
-      setCoachProfile(null)
-      setAthleteProfile(null)
-      setProfileLoaded(false)
-      setLoading(false)
-    } else if (event === 'INITIAL_SESSION' && session?.user) {
-      console.log('Initial session detected')
-      await fetchProfile(session.user.id, false) // Don't force if already loaded
-    } else if (event === 'TOKEN_REFRESHED') {
-      console.log('Token refreshed - no profile fetch needed')
-      // Just update user, don't refetch profile
-    }
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('Sign in detected - using JWT data')
+          setUser(session.user)
+          
+          // Extract profile from JWT - INSTANT
+          const profileFromJWT = extractProfileFromJWT(session.user)
+          setProfile(profileFromJWT)
+          
+          console.log('Profile set from JWT, user can navigate')
+          
+          // Fetch detailed profiles in background
+          fetchDetailedProfiles(session.user.id, profileFromJWT.role)
+          
+          setLoading(false) // Navigation enabled immediately
+          
+        } else if (event === 'SIGNED_OUT') {
+          console.log('Sign out detected - clearing all data')
+          setUser(null)
+          setProfile(null)
+          setCoachProfile(null)
+          setAthleteProfile(null)
+          setLoading(false)
+        }
       }
     })
 
@@ -209,14 +169,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false
       subscription.unsubscribe()
     }
-  }, [fetchProfile, supabase.auth])
+  }, [extractProfileFromJWT, fetchDetailedProfiles, supabase.auth])
 
   const signUp = async (email: string, password: string, userData: { role: 'coach' | 'athlete', firstName: string, lastName: string }) => {
     setLoading(true)
     try {
       console.log('Starting signup process using AuthService for:', email)
 
-      // Import AuthService dynamically to avoid import issues
       const { AuthService } = await import('@/lib/authService')
 
       const result = await AuthService.registerUser({
@@ -246,7 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     setLoading(true)
     try {
-      console.log('🔑 Starting sign in for:', email)
+      console.log('Starting sign in for:', email)
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -254,7 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
 
       if (error) {
-        console.error('❌ Sign in error:', error)
+        console.error('Sign in error:', error)
         throw error
       }
 
@@ -262,15 +221,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('No user data returned from sign in')
       }
 
-      console.log('✅ Sign in successful for user:', data.user.id)
-      console.log('User email confirmed:', data.user.email_confirmed_at)
-      console.log('User metadata:', data.user.user_metadata)
+      console.log('Sign in successful - JWT contains all needed data')
       
-      // The auth state change listener will handle fetching the profile
-      // No need to do anything else here
+      // Auth state listener will handle profile extraction
 
     } catch (error) {
-      console.error('❌ Error signing in:', error)
+      console.error('Error signing in:', error)
       throw error
     } finally {
       setLoading(false)

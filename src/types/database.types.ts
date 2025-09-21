@@ -39,53 +39,95 @@ export interface Database {
           updated_at?: string
         }
       }
-      coach_profiles: {
-        Row: {
-          id: string
-          user_id: string
-          qualifications: string[]
-          specializations: string[]
-          subscription_tier: 'starter' | 'professional' | 'elite' | 'enterprise'
-          athlete_limit: number
-          bio: string | null
-          location: string | null
-          website: string | null
-          phone: string | null
-          is_verified: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          qualifications?: string[]
-          specializations?: string[]
-          subscription_tier?: 'starter' | 'professional' | 'elite' | 'enterprise'
-          athlete_limit?: number
-          bio?: string | null
-          location?: string | null
-          website?: string | null
-          phone?: string | null
-          is_verified?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          qualifications?: string[]
-          specializations?: string[]
-          subscription_tier?: 'starter' | 'professional' | 'elite' | 'enterprise'
-          athlete_limit?: number
-          bio?: string | null
-          location?: string | null
-          website?: string | null
-          phone?: string | null
-          is_verified?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
+// Update your existing coach_profiles section in src/types/database.types.ts
+// Replace the existing coach_profiles section with this:
+
+coach_profiles: {
+  Row: {
+    id: string
+    user_id: string
+    qualifications: string[]
+    specializations: string[]
+    subscription_tier: 'starter' | 'professional' | 'elite' | 'enterprise'
+    athlete_limit: number
+    bio: string | null
+    location: string | null
+    website: string | null
+    phone: string | null
+    is_verified: boolean
+    
+    // Add these workspace fields:
+    workspace_slug: string
+    workspace_name: string | null
+    workspace_description: string | null
+    public_profile_visible: boolean
+    profile_photo_url: string | null
+    coaching_philosophy: string | null
+    years_experience: number | null
+    coaching_location: string | null
+    price_range: string | null
+    availability_status: string
+    
+    created_at: string
+    updated_at: string
+  }
+  Insert: {
+    id?: string
+    user_id: string
+    qualifications?: string[]
+    specializations?: string[]
+    subscription_tier?: 'starter' | 'professional' | 'elite' | 'enterprise'
+    athlete_limit?: number
+    bio?: string | null
+    location?: string | null
+    website?: string | null
+    phone?: string | null
+    is_verified?: boolean
+    
+    // Add these workspace fields:
+    workspace_slug?: string
+    workspace_name?: string | null
+    workspace_description?: string | null
+    public_profile_visible?: boolean
+    profile_photo_url?: string | null
+    coaching_philosophy?: string | null
+    years_experience?: number | null
+    coaching_location?: string | null
+    price_range?: string | null
+    availability_status?: string
+    
+    created_at?: string
+    updated_at?: string
+  }
+  Update: {
+    id?: string
+    user_id?: string
+    qualifications?: string[]
+    specializations?: string[]
+    subscription_tier?: 'starter' | 'professional' | 'elite' | 'enterprise'
+    athlete_limit?: number
+    bio?: string | null
+    location?: string | null
+    website?: string | null
+    phone?: string | null
+    is_verified?: boolean
+    
+    // Add these workspace fields:
+    workspace_slug?: string
+    workspace_name?: string | null
+    workspace_description?: string | null
+    public_profile_visible?: boolean
+    profile_photo_url?: string | null
+    coaching_philosophy?: string | null
+    years_experience?: number | null
+    coaching_location?: string | null
+    price_range?: string | null
+    availability_status?: string
+    
+    created_at?: string
+    updated_at?: string
+  }
+}
       athlete_profiles: {
         Row: {
           id: string
