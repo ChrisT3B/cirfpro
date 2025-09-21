@@ -1,4 +1,4 @@
-// src/app/auth/signin/page.tsx - CIRFPRO Branded Version
+// src/app/auth/signin/page.tsx - CIRFPRO Branded Version with Real Logo
 'use client'
 
 import { useState, Suspense } from 'react'
@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
+import { CirfproLogo } from '@/components/ui/CirfproLogo'
 
 function SignInForm() {
   const [email, setEmail] = useState('')
@@ -67,31 +68,18 @@ function SignInForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" 
+         style={{ background: 'linear-gradient(135deg, #5a5e64 0%, #404449 100%)' }}>
       <div className="max-w-md w-full">
         {/* CIRFPRO Logo/Branding */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-4 shadow-xl relative overflow-hidden" 
-               style={{ background: 'linear-gradient(135deg, #29b643 0%, #1f8c33 100%)' }}>
-            {/* CIRFPRO Arrow Logo */}
-            <svg className="w-12 h-12" viewBox="0 0 100 100" fill="none">
-              <path 
-                d="M25 35 C35 25, 65 25, 75 35 C75 45, 65 55, 55 55 L45 55 L50 65 L40 55 L50 45 C55 45, 65 45, 65 35 C60 30, 40 30, 35 35 C35 40, 40 45, 45 45"
-                fill="#5a5e64"
-                fillOpacity="0.8"
-              />
-            </svg>
-            {/* Subtle pulse animation */}
-            <div className="absolute inset-0 rounded-full animate-pulse" 
-                 style={{ background: 'rgba(255,255,255,0.1)' }}></div>
+          <div className="flex justify-center -mb-1">
+            <CirfproLogo size="xxxxlarge" variant="icon" />
           </div>
-          <h1 className="text-4xl font-bold font-open-sans" 
-              style={{ background: 'linear-gradient(135deg, #29b643, #5a5e64)', 
-                       WebkitBackgroundClip: 'text', 
-                       WebkitTextFillColor: 'transparent' }}>
+          <h1 className="text-4xl font-bold font-open-sans text-white">
             Cirfpro
           </h1>
-          <p className="mt-2 font-open-sans" style={{ color: '#5a5e64' }}>
+          <p className="mt-2 font-open-sans text-white opacity-80">
             Professional Running Coaching Platform
           </p>
         </div>
@@ -281,7 +269,8 @@ function SignInForm() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-green-50 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center"
+         style={{ background: 'linear-gradient(135deg, #5a5e64 0%, #404449 100%)' }}>
       <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-md">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
