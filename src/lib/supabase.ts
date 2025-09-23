@@ -1,8 +1,6 @@
 // src/lib/supabase.ts
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/types/database.types'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
 
 // Client-side Supabase client (for use in components)
 export const createClient = () =>

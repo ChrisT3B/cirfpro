@@ -78,7 +78,7 @@ export default function CoachDashboard() {
         setAthletes(transformedAthletes)
         
         // Simple invitation stats fetch - don't overcomplicate it
-        let pendingCount = 0
+        const pendingCount = 0
 
         
         // Calculate stats

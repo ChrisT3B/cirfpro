@@ -53,7 +53,7 @@ export async function middleware(req: NextRequest) {
             return NextResponse.redirect(url)
           }
         }
-      } catch (error) {
+      } catch  {
         url.pathname = '/auth/signin'
         url.searchParams.set('redirectTo', pathname)
         return NextResponse.redirect(url)

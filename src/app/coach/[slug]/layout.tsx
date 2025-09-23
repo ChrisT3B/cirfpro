@@ -33,9 +33,9 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const _isPublicRoute = pathname.includes('/profile') || 
+  {/*const _isPublicRoute = pathname.includes('/profile') || 
                        pathname.includes('/methodology') || 
-                       pathname.includes('/reviews')
+                       pathname.includes('/reviews') */}
   const isOwner = coachData && profile?.role === 'coach' && 
                   user && user.email === coachData.email
 
@@ -67,7 +67,7 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
           // This user owns this workspace
         }
         
-      } catch (_err) {
+      } catch  {
         setError('Failed to load coach profile')
       } finally {
         setLoading(false)
