@@ -144,31 +144,33 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
                 Profile
               </Link>
 
-              {/* Private Navigation (only for coach owner) */}
-              {isOwner && (
-                <>
-                  <Link
-                    href={`/coach/${slug}/dashboard`}
-                    className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                      pathname.includes('/dashboard')
-                        ? 'bg-green-100 text-green-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    href={`/coach/${slug}/athletes`}
-                    className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                      pathname.includes('/athletes')
-                        ? 'bg-green-100 text-green-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    Athletes
-                  </Link>
-                </>
-              )}
+    
+            {/* Private Navigation (only for coach owner) */}
+            {isOwner && (
+            <>
+                <Link
+                href={`/coach/${slug}/dashboard`}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    pathname.includes('/dashboard')
+                    ? 'bg-green-100 text-green-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+                >
+                Dashboard
+                </Link>
+            
+                <Link
+                href={`/coach/${slug}/athletes`}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    pathname.includes('/athletes')
+                    ? 'bg-green-100 text-green-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+                >
+                Athletes
+                </Link>
+            </>
+            )}
 
               {/* Auth state display */}
               {user ? (
