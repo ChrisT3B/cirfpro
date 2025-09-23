@@ -1,4 +1,3 @@
-// @ts-nocheck
 // src/app/api/invitations/send/route.ts
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
@@ -26,25 +25,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, message } = invitationSchema.parse(body)
 
-    // Get coach profile
-    const { data: coachProfile, error: coachError } = await supabase
+    // Get coach profile (with proper typing)
+    const { data: coachProfile } = await supabase
       .from('coach_profiles')
       .select('*')
       .eq('user_id', user.id)
       .single()
 
-    if (coachError || !coachProfile) {
+    if (!coachProfile) {
       return NextResponse.json({ error: 'Coach profile not found' }, { status: 403 })
     }
 
-    // Get coach's full user details
-    const { data: coachUser, error: coachUserError } = await supabase
+    // Get coach's full user details (with proper typing)
+    const { data: coachUser } = await supabase
       .from('users')
       .select('first_name, last_name, email')
       .eq('id', user.id)
       .single()
 
-    if (coachUserError || !coachUser) {
+    if (!coachUser) {
       return NextResponse.json({ error: 'Coach details not found' }, { status: 403 })
     }
 
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest) {
       .select('*')
       .single()
 
-    if (inviteError) {
+    if (inviteError || !invitation) {
       console.error('Error creating invitation:', inviteError)
       return NextResponse.json({ error: 'Failed to create invitation' }, { status: 500 })
     }
@@ -83,7 +82,7 @@ export async function POST(request: NextRequest) {
     const emailResult = await EmailService.sendCoachInvitation({
       coachName: `${coachUser.first_name} ${coachUser.last_name}`,
       coachEmail: coachUser.email,
-      coachCredentials: coachProfile.qualifications || [],
+      coachCredentials: Array.isArray(coachProfile.qualifications) ? coachProfile.qualifications : [],
       invitationToken: invitation.invitation_token,
       athleteEmail: email,
       message: message,
