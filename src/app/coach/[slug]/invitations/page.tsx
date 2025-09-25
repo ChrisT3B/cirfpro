@@ -134,7 +134,7 @@ export default function InvitationsPage() {
     if (!authLoading && !unauthorized && coachProfile && user) {
       fetchInvitations()
     }
-  }, [coachProfile, authLoading, unauthorized, slug, user])
+  }, [coachProfile, authLoading, unauthorized, slug, user, fetchInvitations])
 
   const handleStatusFilterChange = (status: string) => {
     setStatusFilter(status)
@@ -327,7 +327,7 @@ export default function InvitationsPage() {
     })
   }
 
-  const formatDateTime = (dateString: string) => {
+  {/*const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -335,7 +335,7 @@ export default function InvitationsPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
-  }
+  } */}
 
   const getStatusColor = (status: string) => {
     switch (status) {

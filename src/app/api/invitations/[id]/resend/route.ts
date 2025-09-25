@@ -6,9 +6,10 @@ import { EmailService } from '@/lib/email/emailService'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params
     const supabase = createServerComponentClient({ 
       cookies: () => cookies() 
     })

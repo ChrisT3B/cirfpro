@@ -129,7 +129,7 @@ export default function CoachDashboard() {
     if (!authLoading && !unauthorized && coachProfile && user) {
       fetchDashboardData()
     }
-  }, [coachProfile, authLoading, unauthorized, slug, user])
+  }, [coachProfile, authLoading, unauthorized, slug, user, fetchDashboardData])
 
   if (authLoading || loading) {
     return (
