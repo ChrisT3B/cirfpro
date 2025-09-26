@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Load role-specific profile
       if (userRole === 'coach') {
-        const { data: coachData, error: coachError } = await supabase
+        const { data: _coachData, error: coachError } = await supabase
           .from('coach_profiles')
           .select('*')
           .eq('user_id', userId)
@@ -152,10 +152,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (coachError) {
           console.error('Error loading coach profile:', coachError)
         } else {
-          setCoachProfile(coachData as CoachProfile)
+          setCoachProfile(_coachData as CoachProfile)
         }
       } else if (userRole === 'athlete') {
-        const { data: athleteData, error: athleteError } = await supabase
+        const { data: _athleteData, error: athleteError } = await supabase
           .from('athlete_profiles')
           .select('*')
           .eq('user_id', userId)
@@ -164,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (athleteError) {
           console.error('Error loading athlete profile:', athleteError)
         } else {
-          setAthleteProfile(athleteData as AthleteProfile)
+          setAthleteProfile(_athleteData as AthleteProfile)
         }
       }
       

@@ -39,95 +39,90 @@ export interface Database {
           updated_at?: string
         }
       }
-// Update your existing coach_profiles section in src/types/database.types.ts
-// Replace the existing coach_profiles section with this:
-
-coach_profiles: {
-  Row: {
-    id: string
-    user_id: string
-    qualifications: string[]
-    specializations: string[]
-    subscription_tier: 'starter' | 'professional' | 'elite' | 'enterprise'
-    athlete_limit: number
-    bio: string | null
-    location: string | null
-    website: string | null
-    phone: string | null
-    is_verified: boolean
-    
-    // Add these workspace fields:
-    workspace_slug: string
-    workspace_name: string | null
-    workspace_description: string | null
-    public_profile_visible: boolean
-    profile_photo_url: string | null
-    coaching_philosophy: string | null
-    years_experience: number | null
-    coaching_location: string | null
-    price_range: string | null
-    availability_status: string
-    
-    created_at: string
-    updated_at: string
-  }
-  Insert: {
-    id?: string
-    user_id: string
-    qualifications?: string[]
-    specializations?: string[]
-    subscription_tier?: 'starter' | 'professional' | 'elite' | 'enterprise'
-    athlete_limit?: number
-    bio?: string | null
-    location?: string | null
-    website?: string | null
-    phone?: string | null
-    is_verified?: boolean
-    
-    // Add these workspace fields:
-    workspace_slug?: string
-    workspace_name?: string | null
-    workspace_description?: string | null
-    public_profile_visible?: boolean
-    profile_photo_url?: string | null
-    coaching_philosophy?: string | null
-    years_experience?: number | null
-    coaching_location?: string | null
-    price_range?: string | null
-    availability_status?: string
-    
-    created_at?: string
-    updated_at?: string
-  }
-  Update: {
-    id?: string
-    user_id?: string
-    qualifications?: string[]
-    specializations?: string[]
-    subscription_tier?: 'starter' | 'professional' | 'elite' | 'enterprise'
-    athlete_limit?: number
-    bio?: string | null
-    location?: string | null
-    website?: string | null
-    phone?: string | null
-    is_verified?: boolean
-    
-    // Add these workspace fields:
-    workspace_slug?: string
-    workspace_name?: string | null
-    workspace_description?: string | null
-    public_profile_visible?: boolean
-    profile_photo_url?: string | null
-    coaching_philosophy?: string | null
-    years_experience?: number | null
-    coaching_location?: string | null
-    price_range?: string | null
-    availability_status?: string
-    
-    created_at?: string
-    updated_at?: string
-  }
-}
+      coach_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          qualifications: string[]
+          specializations: string[]
+          subscription_tier: 'starter' | 'professional' | 'elite' | 'enterprise'
+          athlete_limit: number
+          bio: string | null
+          location: string | null
+          website: string | null
+          phone: string | null
+          is_verified: boolean
+          
+          // Workspace fields
+          workspace_slug: string
+          workspace_name: string | null
+          workspace_description: string | null
+          public_profile_visible: boolean
+          profile_photo_url: string | null
+          coaching_philosophy: string | null
+          years_experience: number | null
+          coaching_location: string | null
+          price_range: string | null
+          availability_status: string
+          
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          qualifications?: string[]
+          specializations?: string[]
+          subscription_tier?: 'starter' | 'professional' | 'elite' | 'enterprise'
+          athlete_limit?: number
+          bio?: string | null
+          location?: string | null
+          website?: string | null
+          phone?: string | null
+          is_verified?: boolean
+          
+          workspace_slug?: string
+          workspace_name?: string | null
+          workspace_description?: string | null
+          public_profile_visible?: boolean
+          profile_photo_url?: string | null
+          coaching_philosophy?: string | null
+          years_experience?: number | null
+          coaching_location?: string | null
+          price_range?: string | null
+          availability_status?: string
+          
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          qualifications?: string[]
+          specializations?: string[]
+          subscription_tier?: 'starter' | 'professional' | 'elite' | 'enterprise'
+          athlete_limit?: number
+          bio?: string | null
+          location?: string | null
+          website?: string | null
+          phone?: string | null
+          is_verified?: boolean
+          
+          workspace_slug?: string
+          workspace_name?: string | null
+          workspace_description?: string | null
+          public_profile_visible?: boolean
+          profile_photo_url?: string | null
+          coaching_philosophy?: string | null
+          years_experience?: number | null
+          coaching_location?: string | null
+          price_range?: string | null
+          availability_status?: string
+          
+          created_at?: string
+          updated_at?: string
+        }
+      }
       athlete_profiles: {
         Row: {
           id: string
@@ -184,6 +179,47 @@ coach_profiles: {
           updated_at?: string
         }
       }
+      coach_athlete_invitations: {
+        Row: {
+          id: string
+          coach_id: string
+          email: string
+          invitation_token: string
+          status: 'pending' | 'accepted' | 'expired' | 'declined' | 'cancelled' | 'email_failed'
+          expires_at: string
+          sent_at: string
+          accepted_at: string | null
+          message: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          coach_id: string
+          email: string
+          invitation_token?: string
+          status?: 'pending' | 'accepted' | 'expired' | 'declined' | 'cancelled' | 'email_failed'
+          expires_at?: string
+          sent_at?: string
+          accepted_at?: string | null
+          message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          coach_id?: string
+          email?: string
+          invitation_token?: string
+          status?: 'pending' | 'accepted' | 'expired' | 'declined' | 'cancelled' | 'email_failed'
+          expires_at?: string
+          sent_at?: string
+          accepted_at?: string | null
+          message?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       pending_users: {
         Row: {
           id: string
@@ -192,6 +228,10 @@ coach_profiles: {
           first_name: string
           last_name: string
           auth_user_id: string | null
+          qualifications: string[] | null
+          specializations: string[] | null
+          date_of_birth: string | null
+          experience_level: 'beginner' | 'intermediate' | 'advanced' | null
           created_at: string
         }
         Insert: {
@@ -201,6 +241,10 @@ coach_profiles: {
           first_name: string
           last_name: string
           auth_user_id?: string | null
+          qualifications?: string[] | null
+          specializations?: string[] | null
+          date_of_birth?: string | null
+          experience_level?: 'beginner' | 'intermediate' | 'advanced' | null
           created_at?: string
         }
         Update: {
@@ -210,12 +254,54 @@ coach_profiles: {
           first_name?: string
           last_name?: string
           auth_user_id?: string | null
+          qualifications?: string[] | null
+          specializations?: string[] | null
+          date_of_birth?: string | null
+          experience_level?: 'beginner' | 'intermediate' | 'advanced' | null
           created_at?: string
         }
       }
     }
     Views: {
-      [_ in never]: never
+      coach_invitations_with_expiry: {
+        Row: {
+          id: string
+          coach_id: string
+          email: string
+          invitation_token: string
+          status: 'pending' | 'accepted' | 'expired' | 'declined' | 'cancelled' | 'email_failed'
+          expires_at: string
+          sent_at: string
+          accepted_at: string | null
+          message: string | null
+          created_at: string
+          updated_at: string
+          days_until_expiry: number
+        }
+        Insert: never
+        Update: never
+      }
+      public_coach_directory: {
+        Row: {
+          id: string
+          workspace_slug: string
+          workspace_name: string | null
+          coaching_philosophy: string | null
+          years_experience: number | null
+          coaching_location: string | null
+          price_range: string | null
+          availability_status: string
+          profile_photo_url: string | null
+          qualifications: string[] | null
+          specializations: string[] | null
+          first_name: string
+          last_name: string
+          email: string
+          created_at: string
+        }
+        Insert: never
+        Update: never
+      }
     }
     Functions: {
       [_ in never]: never

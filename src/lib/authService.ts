@@ -3,6 +3,10 @@ import { createClient } from '@/lib/supabase'
 import { InputSanitizer } from '@/utils/InputSanitizer'
 import { SQLSecurityValidator } from '@/utils/sqlSecurityValidator'
 import { AuthError } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
+
+// Define proper types
+type PendingUser = Database['public']['Tables']['pending_users']['Insert']
 
 interface SignUpData {
   email: string
@@ -71,93 +75,64 @@ export class AuthService {
         }
       }
 
-      // Step 4: Experience level validation (for athletes)
-      if (registerData.role === 'athlete' && registerData.experienceLevel) {
-        const experienceValidation = SQLSecurityValidator.validateExperienceLevel(sanitizedData.experienceLevel as string)
-        if (!experienceValidation.isValid) {
-          return {
-            data: null,
-            error: { 
-              message: experienceValidation.error || 'Invalid experience level',
-              name: 'ValidationError',
-              status: 400
-            } as AuthError
-          }
-        }
-      }
+      console.log('Validation passed, creating Supabase auth user...')
 
-      console.log('Validation completed successfully')
-
-      // Step 5: Create Supabase auth user FIRST
-      console.log('Creating Supabase auth user first...')
+      // Step 4: Create auth user first
       const { data: authData, error: authError } = await this.supabase.auth.signUp({
         email: emailValidation.clean!,
         password: registerData.password,
         options: {
-          data: {
-            role: roleValidation.clean!,
-            first_name: sanitizedData.firstName,
-            last_name: sanitizedData.lastName,
-          },
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`,
-        },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
       })
 
       if (authError) {
-        console.error('Auth signup failed:', {
-          message: authError.message,
-          status: authError.status,
-          name: authError.name
-        })
-        return { data: null, error: authError }
+        console.error('Auth user creation failed:', authError)
+        return {
+          data: null,
+          error: authError
+        }
       }
 
       if (!authData.user) {
+        console.error('No user returned from auth signup')
         return {
           data: null,
           error: { 
-            message: 'Failed to create user account',
+            message: 'Failed to create auth user',
             name: 'AuthError',
             status: 500
           } as AuthError
         }
       }
 
-      console.log('Auth user created, now creating pending user record with correct ID...')
+      console.log('Auth user created successfully, creating pending user profile...')
 
-      // Step 6: Create pending user record with the auth user ID
-      console.log('About to insert pending user with data:', {
-  id: authData.user.id,
-  email: emailValidation.clean!,
-  role: roleValidation.clean!,
-  first_name: sanitizedData.firstName,
-  last_name: sanitizedData.lastName
-})
-// Right before the .from('pending_users').insert() call, add:
-const insertData = {
-  id: authData.user.id,
-  email: emailValidation.clean!,
-  role: roleValidation.clean! as 'coach' | 'athlete',
-  first_name: sanitizedData.firstName,
-  last_name: sanitizedData.lastName,
-  qualifications: sanitizedData.qualifications,
-  specializations: sanitizedData.specializations,
-  date_of_birth: sanitizedData.dateOfBirth,
-  experience_level: sanitizedData.experienceLevel as 'beginner' | 'intermediate' | 'advanced'
-}
+      // Step 5: Create pending user profile
+      const insertData: PendingUser = {
+        id: authData.user.id,
+        email: emailValidation.clean!,
+        role: roleValidation.clean! as 'coach' | 'athlete',
+        first_name: sanitizedData.firstName as string,
+        last_name: sanitizedData.lastName as string,
+        qualifications: sanitizedData.qualifications as string[] || null,
+        specializations: sanitizedData.specializations as string[] || null,
+        date_of_birth: sanitizedData.dateOfBirth as string || null,
+        experience_level: sanitizedData.experienceLevel as 'beginner' | 'intermediate' | 'advanced' || null
+      }
 
-console.log('=== PENDING USER INSERT DATA ===', insertData)
-console.log('Data types:', {
-  id: typeof insertData.id,
-  email: typeof insertData.email,
-  role: typeof insertData.role,
-  first_name: typeof insertData.first_name,
-  last_name: typeof insertData.last_name
-})
+      console.log('=== PENDING USER INSERT DATA ===', insertData)
+      console.log('Data types:', {
+        id: typeof insertData.id,
+        email: typeof insertData.email,
+        role: typeof insertData.role,
+        first_name: typeof insertData.first_name,
+        last_name: typeof insertData.last_name
+      })
+
       const { error: pendingError } = await this.supabase
         .from('pending_users')
-        .insert(insertData as any) // Add type assertion here
-
+        .insert(insertData)
 
       if (pendingError) {
         console.error('Error creating pending user:', {
@@ -206,60 +181,67 @@ console.log('Data types:', {
    */
   static async verifyEmail(token: string): Promise<{ success: boolean; message: string; user?: unknown }> {
     try {
-      console.log('Starting email verification')
+      console.log('Starting email verification with token:', token.substring(0, 10) + '...')
 
-      // Step 1: Verify with Supabase
       const { data, error } = await this.supabase.auth.verifyOtp({
         token_hash: token,
-        type: 'email',
+        type: 'email'
       })
 
       if (error) {
         console.error('Email verification failed:', error)
         return {
           success: false,
-          message: 'Email verification failed - the link may have expired'
+          message: error.message || 'Email verification failed'
         }
       }
 
-      if (!data.user) {
-        return {
-          success: false,
-          message: 'Verification successful but user data not found'
-        }
-      }
-
-      console.log('Email verified, completing user registration')
-
-      // Step 2: Complete user registration
-      const { error: completionError } = await this.supabase.rpc('complete_user_registration', {
-      user_id: data.user.id
-      } as any) // Add type assertion here
-
-      if (completionError) {
-        console.error('Error completing user registration:', completionError)
-        return {
-          success: false,
-          message: 'Email verified but failed to complete registration. Please contact support.'
-        }
-      }
-
-      console.log('User registration completed successfully')
-
-      // Step 3: Sign out the user so they must log in manually
-      await this.supabase.auth.signOut()
+      console.log('Email verification successful:', data)
 
       return {
         success: true,
-        message: 'Email verified successfully! You can now sign in with your credentials.',
+        message: 'Email verified successfully. You can now sign in.',
         user: data.user
       }
 
     } catch (error) {
-      console.error('Unexpected verification error:', error)
+      console.error('Exception during email verification:', error)
       return {
         success: false,
-        message: 'An unexpected error occurred during verification'
+        message: 'An unexpected error occurred during email verification'
+      }
+    }
+  }
+
+  /**
+   * Test basic Supabase connectivity
+   */
+  static async testConnection(): Promise<{ success: boolean; message: string }> {
+    try {
+      const { data, error } = await this.supabase
+        .from('users')
+        .select('count')
+        .limit(1)
+
+      if (error) {
+        console.error('Connection test failed:', error)
+        return {
+          success: false,
+          message: `Connection failed: ${error.message}`
+        }
+      }
+
+      console.log('Connection test successful:', data)
+      return {
+        success: true,
+        message: 'Successfully connected to Supabase'
+      }
+
+    } catch (error) {
+      console.error('Exception during connection test:', error)
+      return {
+        success: false,
+        message: 'Connection test failed with exception'
       }
     }
   }

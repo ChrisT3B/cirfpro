@@ -1,13 +1,32 @@
 // src/app/coach/[slug]/dashboard/page.tsx - JWT-FIRST ARCHITECTURE
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase'
 import InvitationModal from '@/components/InvitationModal'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import type { Database } from '@/types/database.types'
+
+// Define specific types for our database operations
+type InvitationWithExpiry = Database['public']['Views']['coach_invitations_with_expiry']['Row']
+
+// Define joined athlete type for the query result
+interface AthleteWithUser {
+  id: string
+  user_id: string
+  coach_id: string | null
+  experience_level: 'beginner' | 'intermediate' | 'advanced'
+  goal_race_distance: string | null
+  created_at: string
+  users: {
+    first_name: string | null
+    last_name: string | null
+    email: string
+  } | null
+}
 
 interface DashboardStats {
   total_athletes: number
@@ -24,15 +43,6 @@ interface Athlete {
   experience_level: string
   goal_race_distance: string | null
   created_at: string
-}
-
-interface Invitation {
-  id: string
-  email: string
-  status: string
-  sent_at: string
-  expires_at: string
-  days_until_expiry: number
 }
 
 export default function CoachDashboard() {
@@ -77,12 +87,89 @@ export default function CoachDashboard() {
   })
 
   const [athletes, setAthletes] = useState<Athlete[]>([])
-  const [recentInvitations, setRecentInvitations] = useState<Invitation[]>([])
+  const [recentInvitations, setRecentInvitations] = useState<InvitationWithExpiry[]>([])
   const [loading, setLoading] = useState(true)
   const [unauthorized, setUnauthorized] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [athletesSectionOpen, setAthletesSectionOpen] = useState(true)
   const [invitationsSectionOpen, setInvitationsSectionOpen] = useState(true)
+
+  const fetchDashboardData = useCallback(async () => {
+    if (!user || !isCoach) return
+    
+    console.log('📊 Fetching dashboard data...')
+    setLoading(true)
+    
+    try {
+      const supabase = createClient()
+
+      // Fetch coach's athletes
+      const { data: athleteData, error: athleteError } = await supabase
+        .from('athlete_profiles')
+        .select(`
+          *,
+          users (
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('coach_id', user.id)
+
+      if (athleteError) {
+        console.error('Error fetching athletes:', athleteError)
+      } else {
+        const transformedAthletes: Athlete[] = (athleteData as AthleteWithUser[])?.map((athlete: AthleteWithUser) => ({
+          id: athlete.id,
+          first_name: athlete.users?.first_name || '',
+          last_name: athlete.users?.last_name || '',
+          email: athlete.users?.email || '',
+          experience_level: athlete.experience_level || 'beginner',
+          goal_race_distance: athlete.goal_race_distance,
+          created_at: athlete.created_at
+        })) || []
+        
+        setAthletes(transformedAthletes)
+        console.log(`✅ Loaded ${transformedAthletes.length} athletes`)
+      }
+
+      // Fetch invitations - using database view with calculated expiry
+      const { data: invitationData, error: invitationError } = await supabase
+        .from('coach_invitations_with_expiry')
+        .select('*')
+        .eq('coach_id', user.id)
+        .order('sent_at', { ascending: false })
+        .limit(5)
+
+      if (invitationError) {
+        console.error('Error fetching invitations:', invitationError)
+      } else {
+        // Data already includes days_until_expiry calculated by the database view
+        const invitations = (invitationData as InvitationWithExpiry[]) || []
+        setRecentInvitations(invitations)
+        console.log(`✅ Loaded ${invitations.length} invitations`)
+      }
+
+      // Calculate stats
+      const totalAthletes = athleteData?.length || 0
+      const activeAthletes = totalAthletes // Simplified for now
+      const pendingInvitations = invitationData?.filter((inv: InvitationWithExpiry) => inv.status === 'pending').length || 0
+
+      setStats({
+        total_athletes: totalAthletes,
+        active_athletes: activeAthletes,
+        pending_invitations: pendingInvitations,
+        this_week_sessions: 0 // Placeholder
+      })
+
+      console.log('✅ Dashboard data loaded successfully')
+      
+    } catch (error) {
+      console.error('❌ Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [user, isCoach])
 
   // JWT-FIRST AUTHORIZATION CHECK
   useEffect(() => {
@@ -143,89 +230,13 @@ export default function CoachDashboard() {
 
   }, [authLoading, user, isCoach, workspaceSlug, slug, router])
 
-  const fetchDashboardData = async () => {
-    if (!user || !isCoach) return
-    
-    console.log('📊 Fetching dashboard data...')
-    setLoading(true)
-    
-    try {
-      const supabase = createClient()
-
-      // Fetch coach's athletes
-      const { data: athleteData, error: athleteError } = await supabase
-        .from('athlete_profiles')
-        .select(`
-          *,
-          users (
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .eq('coach_id', user.id)
-
-      if (athleteError) {
-        console.error('Error fetching athletes:', athleteError)
-      } else {
-        const transformedAthletes: Athlete[] = (athleteData as any)?.map((athlete: any) => ({
-          id: athlete.id,
-          first_name: athlete.users?.first_name || '',
-          last_name: athlete.users?.last_name || '',
-          email: athlete.users?.email || '',
-          experience_level: athlete.experience_level || 'beginner',
-          goal_race_distance: athlete.goal_race_distance,
-          created_at: athlete.created_at
-        })) || []
-        
-        setAthletes(transformedAthletes)
-        console.log(`✅ Loaded ${transformedAthletes.length} athletes`)
-      }
-
-      // Fetch invitations
-      const { data: invitationData, error: invitationError } = await supabase
-        .from('invitations')
-        .select('*')
-        .eq('coach_id', user.id)
-        .order('sent_at', { ascending: false })
-        .limit(5)
-
-      if (invitationError) {
-        console.error('Error fetching invitations:', invitationError)
-      } else {
-        const invitations = (invitationData as any) || []
-        setRecentInvitations(invitations)
-        console.log(`✅ Loaded ${invitations.length} invitations`)
-      }
-
-      // Calculate stats
-      const totalAthletes = athleteData?.length || 0
-      const activeAthletes = totalAthletes // Simplified for now
-      const pendingInvitations = invitationData?.filter((inv: any) => inv.status === 'pending').length || 0
-
-      setStats({
-        total_athletes: totalAthletes,
-        active_athletes: activeAthletes,
-        pending_invitations: pendingInvitations,
-        this_week_sessions: 0 // Placeholder
-      })
-
-      console.log('✅ Dashboard data loaded successfully')
-      
-    } catch (error) {
-      console.error('❌ Error fetching dashboard data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   // Load dashboard data when authorization is complete
   useEffect(() => {
     if (!authLoading && user && isCoach && workspaceSlug === slug) {
       console.log('🚀 Authorization complete, loading dashboard data')
       fetchDashboardData()
     }
-  }, [authLoading, user, isCoach, workspaceSlug, slug])
+  }, [authLoading, user, isCoach, workspaceSlug, slug, fetchDashboardData])
 
   // Show loading while auth is being checked
   if (authLoading) {
@@ -260,7 +271,7 @@ export default function CoachDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-4">You don't have permission to access this workspace.</p>
+          <p className="text-gray-600 mb-4">You don&apos;t have permission to access this workspace.</p>
           <button
             onClick={() => router.push('/dashboard')}
             className="text-blue-600 hover:text-blue-800 underline"

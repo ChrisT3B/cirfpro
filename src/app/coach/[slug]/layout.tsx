@@ -7,6 +7,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import type { Database } from '@/types/database.types'
+
+// Type for coach data from public_coach_directory view
+type PublicCoachData = Database['public']['Views']['public_coach_directory']['Row']
 
 interface CoachData {
   id: string
@@ -73,7 +77,7 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
         const supabase = createClient()
         
         // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => {
+        const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('Database query timeout')), 10000) // 10 second timeout
         })
 
@@ -84,7 +88,7 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
           .single()
 
         console.log('🔍 Executing database query with timeout...')
-        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise])
 
         console.log('📋 Database query completed:', { data, error, hasData: !!data })
 
