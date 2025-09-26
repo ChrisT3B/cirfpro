@@ -156,7 +156,7 @@ console.log('Data types:', {
 })
       const { error: pendingError } = await this.supabase
         .from('pending_users')
-        .insert(insertData)
+        .insert(insertData as any) // Add type assertion here
 
 
       if (pendingError) {
@@ -233,8 +233,8 @@ console.log('Data types:', {
 
       // Step 2: Complete user registration
       const { error: completionError } = await this.supabase.rpc('complete_user_registration', {
-        user_id: data.user.id
-      })
+      user_id: data.user.id
+      } as any) // Add type assertion here
 
       if (completionError) {
         console.error('Error completing user registration:', completionError)
