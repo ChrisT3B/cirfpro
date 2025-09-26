@@ -9,6 +9,8 @@ import { createClient } from '@/lib/supabase'
 import InvitationModal from '@/components/InvitationModal'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { Database } from '@/types/database.types'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { StatCard } from '@/components/ui/StatCard'
 
 // Define specific types for our database operations
 type InvitationWithExpiry = Database['public']['Views']['coach_invitations_with_expiry']['Row']
@@ -333,160 +335,160 @@ export default function CoachDashboard() {
         </details>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - BEFORE: 4 repeated bg-white p-6 rounded-lg shadow divs */}
+      {/* Quick Stats - AFTER: Clean StatCard components */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <span className="text-blue-600 text-xl">👥</span>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Athletes</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.total_athletes}</p>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          icon="👥"
+          label="Total Athletes"
+          value={stats.total_athletes}
+          color="blue"
+          variant="dashboard"
+        />
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <span className="text-green-600 text-xl">⚡</span>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Active Athletes</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.active_athletes}</p>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          icon="⚡"
+          label="Active Athletes"
+          value={stats.active_athletes}
+          color="cirfpro-green"
+          variant="dashboard"
+        />
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <span className="text-yellow-600 text-xl">📧</span>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pending Invites</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.pending_invitations}</p>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          icon="📧"
+          label="Pending Invites"
+          value={stats.pending_invitations}
+          color="yellow"
+          variant="dashboard"
+        />
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <span className="text-purple-600 text-xl">🏃</span>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">This Week</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.this_week_sessions}</p>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          icon="🏃"
+          label="This Week"
+          value={stats.this_week_sessions}
+          color="purple"
+          variant="dashboard"
+        />
       </div>
 
-      {/* Action Buttons */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => setIsInviteModalOpen(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            📧 Invite Athlete
-          </button>
-          <Link
-            href={`/coach/${slug}/athletes`}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            👥 Manage Athletes
-          </Link>
-          <Link
-            href={`/coach/${slug}/plans`}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            📋 Training Plans
-          </Link>
-        </div>
-      </div>
+      {/* Action Buttons - BEFORE: bg-white rounded-lg shadow p-6 */}
+      {/* Action Buttons - AFTER: Clean Card component */}
+        <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setIsInviteModalOpen(true)}
+              className="bg-cirfpro-green-600 text-white px-4 py-2 rounded-lg hover:bg-cirfpro-green-700 transition-colors font-medium flex items-center gap-2"
+            >
+              📧 Invite Athlete
+            </button>
+            <Link
+              href={`/coach/${slug}/athletes`}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              👥 Manage Athletes
+            </Link>
+            <Link
+              href={`/coach/${slug}/plans`}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              📋 Training Plans
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Athletes Section */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
+      {/* Athletes Section - BEFORE: bg-white rounded-lg shadow */}
+      {/* Athletes Section - AFTER: Clean Card component */}
+      <Card>
+        <CardHeader>
           <button
             onClick={() => setAthletesSectionOpen(!athletesSectionOpen)}
             className="flex items-center justify-between w-full text-left"
           >
-            <h2 className="text-lg font-semibold text-gray-900">
-              Your Athletes ({athletes.length})
-            </h2>
-            {athletesSectionOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            <CardTitle>Your Athletes ({athletes.length})</CardTitle>
+            {athletesSectionOpen ? (
+              <span className="text-cirfpro-gray-500">▲</span>
+            ) : (
+              <span className="text-cirfpro-gray-500">▼</span>
+            )}
           </button>
-        </div>
+        </CardHeader>
         
         {athletesSectionOpen && (
-          <div className="p-6">
+          <CardContent>
             {athletes.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">No athletes yet</p>
+                <p className="text-cirfpro-gray-500 mb-4">No athletes yet</p>
                 <button
                   onClick={() => setIsInviteModalOpen(true)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  className="bg-cirfpro-green-600 text-white px-4 py-2 rounded-lg hover:bg-cirfpro-green-700 transition-colors"
                 >
-                  Invite Your First Athlete
+                  Send Your First Invitation
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 {athletes.map((athlete) => (
-                  <div key={athlete.id} className="border rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900">
-                      {athlete.first_name} {athlete.last_name}
-                    </h3>
-                    <p className="text-sm text-gray-600">{athlete.email}</p>
-                    <p className="text-sm text-gray-500 capitalize">
-                      {athlete.experience_level} runner
-                    </p>
-                    {athlete.goal_race_distance && (
-                      <p className="text-sm text-green-600">
-                        Goal: {athlete.goal_race_distance}
+                  <div
+                    key={athlete.id}
+                    className="flex items-center justify-between p-4 bg-cirfpro-gray-50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-cirfpro-gray-900">
+                        {athlete.first_name} {athlete.last_name}
                       </p>
-                    )}
-                    <p className="text-xs text-gray-400 mt-2">
-                      Joined: {formatDate(athlete.created_at)}
-                    </p>
+                      <p className="text-sm text-cirfpro-gray-600">{athlete.email}</p>
+                      <p className="text-xs text-cirfpro-gray-500 capitalize">
+                        {athlete.experience_level} level
+                        {athlete.goal_race_distance && ` • Goal: ${athlete.goal_race_distance}`}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/coach/${slug}/athletes/${athlete.id}`}
+                      className="text-cirfpro-green-600 hover:text-cirfpro-green-700 font-medium"
+                    >
+                      View Profile →
+                    </Link>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </CardContent>
         )}
-      </div>
+      </Card>
 
-      {/* Recent Invitations Section */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
+      {/* Recent Invitations Section - BEFORE: bg-white rounded-lg shadow */}
+      {/* Recent Invitations Section - AFTER: Clean Card component */}
+      <Card>
+        <CardHeader>
           <button
             onClick={() => setInvitationsSectionOpen(!invitationsSectionOpen)}
             className="flex items-center justify-between w-full text-left"
           >
-            <h2 className="text-lg font-semibold text-gray-900">
-              Recent Invitations ({recentInvitations.length})
-            </h2>
-            {invitationsSectionOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            <CardTitle>Recent Invitations ({recentInvitations.length})</CardTitle>
+            {invitationsSectionOpen ? (
+              <span className="text-cirfpro-gray-500">▲</span>
+            ) : (
+              <span className="text-cirfpro-gray-500">▼</span>
+            )}
           </button>
-        </div>
+        </CardHeader>
         
         {invitationsSectionOpen && (
-          <div className="p-6">
+          <CardContent>
             {recentInvitations.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No invitations sent yet</p>
+              <p className="text-cirfpro-gray-500 text-center py-4">No invitations sent yet</p>
             ) : (
               <div className="space-y-3">
                 {recentInvitations.map((invitation) => (
-                  <div key={invitation.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={invitation.id} className="flex items-center justify-between p-3 border border-cirfpro-gray-200 rounded-lg">
                     <div>
-                      <p className="font-medium text-gray-900">{invitation.email}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-medium text-cirfpro-gray-900">{invitation.email}</p>
+                      <p className="text-sm text-cirfpro-gray-600">
                         Sent: {formatDate(invitation.sent_at)}
                       </p>
                     </div>
@@ -502,15 +504,15 @@ export default function CoachDashboard() {
               <div className="mt-4 text-center">
                 <Link
                   href={`/coach/${slug}/invitations`}
-                  className="text-blue-600 hover:text-blue-800 text-sm"
+                  className="text-cirfpro-green-600 hover:text-cirfpro-green-700 text-sm font-medium"
                 >
                   View All Invitations →
                 </Link>
               </div>
             )}
-          </div>
+          </CardContent>
         )}
-      </div>
+      </Card>
 
       {/* Invitation Modal */}
       {isInviteModalOpen && (

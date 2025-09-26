@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Search, Mail, Calendar, Clock, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import InvitationModal from '@/components/InvitationModal'
 import ConfirmationModal from '@/components/ui/ConfirmationModal'
+import { StatCard } from '@/components/ui/StatCard'
+import { Card, CardContent } from '@/components/ui/Card'
 
 
 interface Invitation {
@@ -380,238 +382,233 @@ export default function InvitationsPage() {
         </button>
       </div>
 
-      {/* Stats Cards */}
+     {/* Stats Cards - BEFORE: 7 repeated bg-white rounded-lg shadow p-4 border-l-4 divs */}
+      {/* Stats Cards - AFTER: Clean StatCard components */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-gray-400">
-          <div className="text-xs font-medium text-gray-600 uppercase">Total</div>
-          <div className="mt-1 text-2xl font-bold text-gray-900">{stats.total}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-          <div className="text-xs font-medium text-gray-600 uppercase">Pending</div>
-          <div className="mt-1 text-2xl font-bold text-blue-600">{stats.pending}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
-          <div className="text-xs font-medium text-gray-600 uppercase">Accepted</div>
-          <div className="mt-1 text-2xl font-bold text-green-600">{stats.accepted}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
-          <div className="text-xs font-medium text-gray-600 uppercase">Expired</div>
-          <div className="mt-1 text-2xl font-bold text-red-600">{stats.expired}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-gray-500">
-          <div className="text-xs font-medium text-gray-600 uppercase">Declined</div>
-          <div className="mt-1 text-2xl font-bold text-gray-600">{stats.declined}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-gray-500">
-          <div className="text-xs font-medium text-gray-600 uppercase">Cancelled</div>
-          <div className="mt-1 text-2xl font-bold text-gray-600">{stats.cancelled}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-orange-500">
-          <div className="text-xs font-medium text-gray-600 uppercase">Failed</div>
-          <div className="mt-1 text-2xl font-bold text-orange-600">{stats.email_failed}</div>
-        </div>
+        <StatCard
+          label="Total"
+          value={stats.total}
+          color="gray"
+          variant="invitation"
+        />
+
+        <StatCard
+          label="Pending"
+          value={stats.pending}
+          color="blue"
+          variant="invitation"
+        />
+
+        <StatCard
+          label="Accepted"
+          value={stats.accepted}
+          color="cirfpro-green"
+          variant="invitation"
+        />
+
+        <StatCard
+          label="Expired"
+          value={stats.expired}
+          color="red"
+          variant="invitation"
+        />
+
+        <StatCard
+          label="Declined"
+          value={stats.declined}
+          color="gray"
+          variant="invitation"
+        />
+
+        <StatCard
+          label="Cancelled"
+          value={stats.cancelled}
+          color="gray"
+          variant="invitation"
+        />
+
+        <StatCard
+          label="Email Failed"
+          value={stats.email_failed}
+          color="red"
+          variant="invitation"
+        />
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Status Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <select
-              value={statusFilter}
-              onChange={(e) => handleStatusFilterChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="accepted">Accepted</option>
-              <option value="expired">Expired</option>
-              <option value="declined">Declined</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="email_failed">Email Failed</option>
-            </select>
-          </div>
-
-          {/* Search */}
-          <form onSubmit={handleSearchSubmit} className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                placeholder="Search by email..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </form>
-        </div>
+{/* Filters - BEFORE: bg-white rounded-lg shadow p-4 */}
+{/* Filters - AFTER: Clean Card component */}
+<Card padding="sm">
+  <CardContent>
+    <div className="flex flex-col md:flex-row gap-4">
+      {/* Status Filter */}
+      <div className="flex items-center gap-2">
+        <Filter className="w-5 h-5 text-cirfpro-gray-500" />
+        <select
+          value={statusFilter}
+          onChange={(e) => handleStatusFilterChange(e.target.value)}
+          className="px-3 py-2 border border-cirfpro-gray-300 rounded-lg focus:ring-2 focus:ring-cirfpro-green-500 focus:border-cirfpro-green-500"
+        >
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="accepted">Accepted</option>
+          <option value="expired">Expired</option>
+          <option value="declined">Declined</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="email_failed">Email Failed</option>
+        </select>
       </div>
 
-      {/* Invitations Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {invitations.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <Mail className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">
-              {searchQuery || statusFilter !== 'all' 
-                ? 'No invitations found matching your filters.' 
-                : 'You haven\'t sent any invitations yet.'}
-            </p>
-            {!searchQuery && statusFilter === 'all' && (
-              <button 
-                onClick={() => setIsInviteModalOpen(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-              >
-                Send Your First Invitation
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sent</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expires</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Message</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {invitations.map((invitation) => (
-                    <tr key={invitation.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {invitation.status === 'pending' && (
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={() => handleResendInvitation(invitation.id)}
-                              disabled={resendingIds.has(invitation.id)}
-                              className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {resendingIds.has(invitation.id) ? 'Sending...' : 'Resend'}
-                            </button>
-                            <span className="text-gray-300">|</span>
-                            <button 
-                              onClick={() => handleCancelInvitation(invitation.id, invitation.email)}
-                              disabled={cancelingIds.has(invitation.id)}
-                              className="text-red-600 hover:text-red-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {cancelingIds.has(invitation.id) ? 'Canceling...' : 'Cancel'}
-                            </button>
-                          </div>
-                        )}
-                        {invitation.status === 'expired' && (
-                          <button 
-                            onClick={() => handleResendInvitation(invitation.id)}
-                            disabled={resendingIds.has(invitation.id)}
-                            className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {resendingIds.has(invitation.id) ? 'Sending...' : 'Resend'}
-                          </button>
-                        )}
-                        {invitation.status === 'email_failed' && (
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={() => handleResendInvitation(invitation.id)}
-                              disabled={resendingIds.has(invitation.id)}
-                              className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {resendingIds.has(invitation.id) ? 'Resending...' : 'Retry'}
-                            </button>
-                            <span className="text-gray-300">|</span>
-                            <button 
-                              onClick={() => handleCancelInvitation(invitation.id, invitation.email)}
-                              disabled={cancelingIds.has(invitation.id)}
-                              className="text-red-600 hover:text-red-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {cancelingIds.has(invitation.id) ? 'Canceling...' : 'Cancel'}
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                          <span className="text-sm font-medium text-gray-900">{invitation.email}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invitation.status)}`}>
-                          {getStatusBadgeText(invitation.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          {formatDate(invitation.sent_at)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm">
-                          <Clock className="w-4 h-4 mr-1" />
-                          {invitation.is_expired ? (
-                            <span className="text-red-600">Expired</span>
-                          ) : (
-                            <span className="text-gray-500">{invitation.days_until_expiry} days</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {invitation.message ? (
-                          <div className="text-sm text-gray-600 max-w-xs truncate" title={invitation.message}>
-                            {invitation.message}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-400 italic">No message</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Search */}
+      <form onSubmit={handleSearchSubmit} className="flex-1">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-cirfpro-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder="Search by email..."
+            className="w-full pl-10 pr-4 py-2 border border-cirfpro-gray-300 rounded-lg focus:ring-2 focus:ring-cirfpro-green-500 focus:border-cirfpro-green-500"
+          />
+        </div>
+      </form>
+    </div>
+  </CardContent>
+</Card>
 
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
-                  <span className="font-medium">
-                    {Math.min(pagination.page * pagination.limit, pagination.total)}
-                  </span> of{' '}
-                  <span className="font-medium">{pagination.total}</span> invitations
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                    disabled={!pagination.hasPrev}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
-                  </button>
-                  <span className="px-4 py-2 text-sm text-gray-700">
-                    Page {pagination.page} of {pagination.totalPages}
+
+{/* Invitations Table - BEFORE: bg-white rounded-lg shadow overflow-hidden */}
+{/* Invitations Table - AFTER: Clean Card component */}
+<Card className="overflow-hidden">
+  {invitations.length === 0 ? (
+    <CardContent className="px-6 py-12 text-center">
+      <Mail className="w-12 h-12 text-cirfpro-gray-400 mx-auto mb-4" />
+      <p className="text-cirfpro-gray-500 mb-4">
+        {searchQuery || statusFilter !== 'all' 
+          ? 'No invitations found matching your filters.' 
+          : 'You haven\'t sent any invitations yet.'}
+      </p>
+      {!searchQuery && statusFilter === 'all' && (
+        <button 
+          onClick={() => setIsInviteModalOpen(true)}
+          className="bg-cirfpro-green-600 text-white px-4 py-2 rounded-lg hover:bg-cirfpro-green-700 transition-colors text-sm font-medium"
+        >
+          Send Your First Invitation
+        </button>
+      )}
+    </CardContent>
+  ) : (
+    <>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-cirfpro-gray-200">
+          <thead className="bg-cirfpro-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-cirfpro-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-cirfpro-gray-500 uppercase">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-cirfpro-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-cirfpro-gray-500 uppercase">Sent</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-cirfpro-gray-500 uppercase">Expires</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-cirfpro-gray-500 uppercase">Message</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-cirfpro-gray-200">
+            {invitations.map((invitation) => (
+              <tr key={invitation.id} className="hover:bg-cirfpro-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {invitation.status === 'pending' && (
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => handleResendInvitation(invitation.id)}
+                        disabled={resendingIds.has(invitation.id)}
+                        className="text-cirfpro-green-600 hover:text-cirfpro-green-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {resendingIds.has(invitation.id) ? 'Resending...' : 'Retry'}
+                      </button>
+                      <span className="text-cirfpro-gray-300">|</span>
+                      <button 
+                        onClick={() => handleCancelInvitation(invitation.id, invitation.email)}
+                        disabled={cancelingIds.has(invitation.id)}
+                        className="text-red-600 hover:text-red-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {cancelingIds.has(invitation.id) ? 'Canceling...' : 'Cancel'}
+                      </button>
+                    </div>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <Mail className="w-4 h-4 text-cirfpro-gray-400 mr-2" />
+                    <span className="text-sm font-medium text-cirfpro-gray-900">{invitation.email}</span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invitation.status)}`}>
+                    {getStatusBadgeText(invitation.status)}
                   </span>
-                  <button
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                    disabled={!pagination.hasNext}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center text-sm text-cirfpro-gray-500">
+                    <Calendar className="w-4 h-4 mr-1" />
+                    {formatDate(invitation.sent_at)}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center text-sm">
+                    <Clock className="w-4 h-4 mr-1" />
+                    {invitation.is_expired ? (
+                      <span className="text-red-600">Expired</span>
+                    ) : (
+                      <span className="text-cirfpro-gray-500">{invitation.days_until_expiry} days</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  {invitation.message ? (
+                    <p className="text-sm text-cirfpro-gray-600 max-w-xs truncate">
+                      {invitation.message}
+                    </p>
+                  ) : (
+                    <span className="text-cirfpro-gray-400 text-sm italic">No message</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      {/* Pagination - Enhanced with CIRFPRO styling */}
+      {pagination.totalPages > 1 && (
+        <div className="px-6 py-4 bg-cirfpro-gray-50 border-t border-cirfpro-gray-200">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-cirfpro-gray-700">
+              Showing page {pagination.page} of {pagination.totalPages} 
+              ({pagination.total} total invitations)
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={!pagination.hasPrev}
+                className="px-3 py-1 border border-cirfpro-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cirfpro-gray-100"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-3 py-1 text-sm text-cirfpro-gray-600">
+                {pagination.page}
+              </span>
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={!pagination.hasNext}
+                className="px-3 py-1 border border-cirfpro-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cirfpro-gray-100"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )}
+</Card>
 
       {/* Confirmation Modal */}
       <ConfirmationModal
