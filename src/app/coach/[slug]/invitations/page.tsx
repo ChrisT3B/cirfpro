@@ -1,13 +1,14 @@
 // src/app/coach/[slug]/invitations/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback  } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { Search, Mail, Calendar, Clock, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import InvitationModal from '@/components/InvitationModal'
 import ConfirmationModal from '@/components/ui/ConfirmationModal'
+
 
 interface Invitation {
   id: string
@@ -93,7 +94,7 @@ export default function InvitationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const fetchInvitations = async (page = 1, status = statusFilter, search = searchQuery) => {
+  const fetchInvitations = useCallback(async (page = 1, status = statusFilter, search = searchQuery) => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
@@ -122,7 +123,7 @@ export default function InvitationsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, searchQuery])
 
   useEffect(() => {
     if (!authLoading && coachProfile && coachProfile.workspace_slug !== slug) {
