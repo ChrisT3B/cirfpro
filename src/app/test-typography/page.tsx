@@ -85,23 +85,23 @@ export default function TestTypographyPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <Heading level="h3" color="default">Default Color</Heading>
-                    <code className="text-xs text-cirfpro-gray-500">color="default"</code>
+                    <code className="text-xs text-cirfpro-gray-500">color=&quot;default&quot;</code>
                   </div>
                   <div>
                     <Heading level="h3" color="brand">Brand Color</Heading>
-                    <code className="text-xs text-cirfpro-gray-500">color="brand"</code>
+                    <code className="text-xs text-cirfpro-gray-500">color=&quot;brand&quot;</code>
                   </div>
                   <div>
                     <Heading level="h3" color="muted">Muted Color</Heading>
-                    <code className="text-xs text-cirfpro-gray-500">color="muted"</code>
+                    <code className="text-xs text-cirfpro-gray-500">color=&quot;muted&quot;</code>
                   </div>
                   <div>
                     <Heading level="h3" color="light">Light Color</Heading>
-                    <code className="text-xs text-cirfpro-gray-500">color="light"</code>
+                    <code className="text-xs text-cirfpro-gray-500">color="&quot;light&quot;</code>
                   </div>
                   <div className="bg-cirfpro-gray-900 p-4 rounded">
                     <Heading level="h3" color="white">White Color</Heading>
-                    <code className="text-xs text-cirfpro-gray-300">color="white"</code>
+                    <code className="text-xs text-cirfpro-gray-300">color=&quot;white&quot;</code>
                   </div>
                 </div>
               </div>
