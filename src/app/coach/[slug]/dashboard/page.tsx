@@ -11,6 +11,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { Database } from '@/types/database.types'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
+import { Heading, Text, Caption, Badge } from '@/components/ui/Typography'
 
 // Define specific types for our database operations
 type InvitationWithExpiry = Database['public']['Views']['coach_invitations_with_expiry']['Row']
@@ -303,17 +304,33 @@ export default function CoachDashboard() {
       default: return 'bg-gray-100 text-gray-800'
     }
   }
+const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+  switch (status) {
+    case 'accepted': return 'success'
+    case 'pending': return 'info'
+    case 'expired': 
+    case 'declined': return 'error'
+    case 'email_failed': return 'warning'
+    default: return 'default'
+  }
+}
 
+const getStatusBadgeText = (status: string) => {
+  switch (status) {
+    case 'email_failed': return 'Email Failed'
+    default: return status.charAt(0).toUpperCase() + status.slice(1)
+  }
+}
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <Heading level="h1" className="mb-2">
           Welcome to your coaching workspace, {firstName}!
-        </h1>
-        <p className="text-gray-600">
+        </Heading>
+        <Text color="muted">
           Manage your athletes, training plans, and coaching activities from here.
-        </p>
+        </Text>
         
         {/* JWT Debug Info */}
         <details className="mt-4">
@@ -492,9 +509,9 @@ export default function CoachDashboard() {
                         Sent: {formatDate(invitation.sent_at)}
                       </p>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invitation.status)}`}>
-                      {invitation.status}
-                    </span>
+                    <Badge variant={getStatusBadgeVariant(invitation.status)} size="sm">
+                    {getStatusBadgeText(invitation.status)}
+                  </Badge>
                   </div>
                 ))}
               </div>

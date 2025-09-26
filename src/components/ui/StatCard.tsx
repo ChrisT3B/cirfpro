@@ -2,6 +2,7 @@
 import React from 'react'
 import { Card } from '@/components/ui/Card'
 import { cn } from '@/lib/styles'
+import { Heading, Caption, Badge } from '@/components/ui/Typography'
 
 // Supported color variants (matches your current usage)
 type StatColor = 'blue' | 'green' | 'cirfpro-green' | 'red' | 'yellow' | 'purple' | 'gray'
@@ -207,17 +208,28 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
         onClick={onClick}
         {...props}
       >
-        <div className="text-xs font-medium text-cirfpro-gray-600 uppercase mb-1">
-          {label}
-        </div>
+        <Caption uppercase color="muted" className="mb-1">
+        {label}
+        </Caption>
         <div className="flex items-center gap-2">
-          <div className={cn('text-2xl font-bold', colorClasses.valueColors[color])}>
+         <Heading 
+            level="2xl" 
+            className={cn(
+                color === 'blue' && 'text-blue-600',
+                color === 'green' && 'text-green-600',
+                color === 'cirfpro-green' && 'text-cirfpro-green-600',
+                color === 'red' && 'text-red-600',
+                color === 'yellow' && 'text-yellow-600',
+                color === 'purple' && 'text-purple-600',
+                color === 'gray' && 'text-cirfpro-gray-600'
+            )}
+            >
             {typeof value === 'number' ? value.toLocaleString() : value}
-          </div>
+            </Heading>
           {trend && <TrendIndicator trend={trend} />}
         </div>
         {subtitle && (
-          <div className="text-xs text-cirfpro-gray-500 mt-1">{subtitle}</div>
+          <Caption color="light" className="mt-1">{subtitle}</Caption>
         )}
       </Card>
     )

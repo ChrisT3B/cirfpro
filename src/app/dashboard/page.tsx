@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+
 export default function DashboardPage() {
   console.log('🏗️ Dashboard component is loading/mounting')
   
