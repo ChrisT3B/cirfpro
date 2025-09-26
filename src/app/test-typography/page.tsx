@@ -97,7 +97,7 @@ export default function TestTypographyPage() {
                   </div>
                   <div>
                     <Heading level="h3" color="light">Light Color</Heading>
-                    <code className="text-xs text-cirfpro-gray-500">color="&quot;light&quot;</code>
+                    <code className="text-xs text-cirfpro-gray-500">color=&quot;light&quot;</code>
                   </div>
                   <div className="bg-cirfpro-gray-900 p-4 rounded">
                     <Heading level="h3" color="white">White Color</Heading>
