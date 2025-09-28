@@ -12,6 +12,7 @@ import type { Database } from '@/types/database.types'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import { Heading, Text, Caption, Badge } from '@/components/ui/Typography'
+import ProfileCompletionBar from '@/components/ProfileCompletionBar'
 
 // Define specific types for our database operations
 type InvitationWithExpiry = Database['public']['Views']['coach_invitations_with_expiry']['Row']
@@ -294,16 +295,7 @@ export default function CoachDashboard() {
     })
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-blue-100 text-blue-800'
-      case 'accepted': return 'bg-green-100 text-green-800'
-      case 'expired': return 'bg-red-100 text-red-800'
-      case 'declined': return 'bg-gray-100 text-gray-800'
-      case 'cancelled': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+
 const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
   switch (status) {
     case 'accepted': return 'success'
