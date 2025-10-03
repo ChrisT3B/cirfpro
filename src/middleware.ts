@@ -1,21 +1,42 @@
-// src/middleware.ts - Detailed debug to find exact issue
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+// src/middleware.ts - Add debug logging
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database.types'
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient<Database>({ req, res })
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  console.log('🔀 Middleware executing for:', pathname)
+  
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
 
-  const { data: { session } } = await supabase.auth.getSession()
-  const url = req.nextUrl.clone()
-  const pathname = url.pathname
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
-  console.log('=== MIDDLEWARE DEBUG ===')
-  console.log('Path:', pathname)
-  console.log('Session exists:', !!session)
-  console.log('User email:', session?.user?.email)
+  // Use getUser() instead of getSession() for security
+  const { data: { user } } = await supabase.auth.getUser()
+  console.log('🔀 User found:', !!user)
+
+  const url = request.nextUrl.clone()
 
   // Handle coach workspace routes
   if (pathname.startsWith('/coach/')) {
@@ -23,101 +44,67 @@ export async function middleware(req: NextRequest) {
     const slug = pathParts[2]
     const route = pathParts[3] || 'profile'
     
-    console.log('Coach route - Slug:', slug, 'Route:', route)
+    console.log('🔀 Coach route detected:', { slug, route })
     
-    if (slug === 'directory') return res
+    if (slug === 'directory') return supabaseResponse
     
     const publicRoutes = ['profile', 'methodology', 'reviews']
-    if (publicRoutes.includes(route)) return res
-
-    const privateRoutes = ['dashboard', 'athletes', 'plans', 'settings']
-    if (privateRoutes.includes(route)) {
-      if (!session) {
-        console.log('No session - redirecting to signin')
-        url.pathname = '/auth/signin'
-        url.searchParams.set('redirectTo', pathname)
-        return NextResponse.redirect(url)
-      }
-
-      if (!session.user.email) {
-        console.log('No user email - redirecting to signin')
-        url.pathname = '/auth/signin'
-        url.searchParams.set('redirectTo', pathname)
-        return NextResponse.redirect(url)
-      }
-
-      console.log('Checking workspace ownership...')
-      console.log('Looking for workspace_slug:', slug)
-      console.log('User email:', session.user.email)
-
-      try {
-        // First query - check workspace ownership
-        console.log('Query 1: Checking workspace owner for slug:', slug)
-        const workspaceQuery = await supabase
-          .from('public_coach_directory')
-          .select('email')
-          .eq('workspace_slug', slug)
-        
-        console.log('Workspace query result:', workspaceQuery)
-        
-        if (workspaceQuery.error) {
-          console.log('Workspace query error:', workspaceQuery.error)
-          throw workspaceQuery.error
-        }
-
-        const workspaceOwner = workspaceQuery.data?.[0]
-        console.log('Workspace owner found:', workspaceOwner)
-
-        if (!workspaceOwner || session.user.email !== workspaceOwner.email) {
-          console.log('User does not own workspace. Checking user workspace...')
-          
-          // Second query - find user's workspace
-          console.log('Query 2: Finding user workspace for email:', session.user.email)
-          const userQuery = await supabase
-            .from('public_coach_directory')
-            .select('workspace_slug')
-            .eq('email', session.user.email)
-          
-          console.log('User workspace query result:', userQuery)
-          
-          if (userQuery.error) {
-            console.log('User workspace query error:', userQuery.error)
-            throw userQuery.error
-          }
-
-          const userWorkspace = userQuery.data?.[0]
-          console.log('User workspace found:', userWorkspace)
-
-          if (userWorkspace?.workspace_slug) {
-            console.log('Redirecting to user workspace:', `/coach/${userWorkspace.workspace_slug}/dashboard`)
-            url.pathname = `/coach/${userWorkspace.workspace_slug}/dashboard`
-            return NextResponse.redirect(url)
-          } else {
-            console.log('No user workspace found - allowing request to continue')
-            return res
-          }
-        } else {
-          console.log('User owns workspace - allowing access')
-        }
-      } catch (error) {
-        console.log('Database error occurred:', error)
-        console.log('Redirecting to signin due to error')
-        url.pathname = '/auth/signin'
-        url.searchParams.set('redirectTo', pathname)
-        return NextResponse.redirect(url)
-      }
+    if (publicRoutes.includes(route)) {
+      console.log('🔀 Public route, allowing access')
+      return supabaseResponse
     }
 
-    if (pathParts.length === 3 && slug !== 'directory') {
-      url.pathname = `/coach/${slug}/profile`
+    const privateRoutes = ['dashboard', 'athletes', 'plans', 'settings', 'invitations']
+    if (privateRoutes.includes(route)) {
+      if (!user) {
+        console.log('🔀 No user, redirecting to signin')
+        url.pathname = '/auth/signin'
+        url.searchParams.set('redirectTo', pathname)
+        return NextResponse.redirect(url)
+      }
+
+// src/middleware.ts
+// Replace the workspace ownership check section with:
+
+try {
+  const { data: workspaceOwner } = await supabase
+    .from('coach_profiles')
+    .select('user_id, users!inner(email)')
+    .eq('workspace_slug', slug)
+    .single()
+
+  const owner = workspaceOwner as any
+  
+  if (!owner || user.email !== owner.users?.email) {
+    // User doesn't own this workspace, redirect to their own
+    const { data: userWorkspace } = await supabase
+      .from('coach_profiles')
+      .select('workspace_slug, users!inner(email)')
+      .eq('user_id', user.id)
+      .single()
+
+    const workspace = userWorkspace as any
+
+    if (workspace?.workspace_slug) {
+      url.pathname = `/coach/${workspace.workspace_slug}/dashboard`
+      return NextResponse.redirect(url)
+    } else {
+      url.pathname = '/dashboard'
       return NextResponse.redirect(url)
     }
   }
+} catch (error) {
+  console.error('Middleware workspace check error:', error)
+}
+    }
+  }
 
-  console.log('Allowing request to continue')
-  return res
+  console.log('🔀 Middleware complete, allowing request')
+  return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/coach/:path*', '/dashboard/:path*', '/dashboard']
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }
