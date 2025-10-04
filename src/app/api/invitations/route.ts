@@ -1,23 +1,19 @@
 // src/app/api/invitations/route.ts
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-// Query parameters schema
 const querySchema = z.object({
   page: z.string().optional().default('1'),
   limit: z.string().optional().default('10'),
-  status: z.enum(['pending', 'accepted', 'expired', 'declined', 'cancelled', 'email_failed']).optional(),
+  status: z.string().optional(),
   email: z.string().optional(),
   search: z.string().optional(),
 })
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerComponentClient({ 
-      cookies: () => cookies() 
-    })
+    const supabase = await createClient()
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -25,22 +21,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verify coach profile exists
-    const { data: coachProfile } = await supabase
-      .from('coach_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!coachProfile) {
-      return NextResponse.json({ error: 'Coach profile not found' }, { status: 403 })
-    }
-
     // Parse and validate query parameters
-    const url = new URL(request.url)
-    const queryParams = Object.fromEntries(url.searchParams)
-    const { page, limit, status, email, search } = querySchema.parse(queryParams)
-
+    const searchParams = Object.fromEntries(request.nextUrl.searchParams.entries())
+    const { page, limit, status, email, search } = querySchema.parse(searchParams)
+    
     const pageNum = parseInt(page)
     const limitNum = parseInt(limit)
     const offset = (pageNum - 1) * limitNum
@@ -101,21 +85,30 @@ export async function GET(request: NextRequest) {
       email_failed: statsResult.data?.filter(s => s.status === 'email_failed').length || 0,
     }
 
-    // Format invitation data
-    const formattedInvitations = invitations?.map(invitation => ({
-      id: invitation.id,
-      email: invitation.email,
-      status: invitation.status,
-      message: invitation.message,
-      expires_at: invitation.expires_at,
-      sent_at: invitation.sent_at,
-      accepted_at: invitation.accepted_at,
-      created_at: invitation.created_at,
-      updated_at: invitation.updated_at,
-      // Add computed fields for UI
-      is_expired: new Date(invitation.expires_at) < new Date(),
-      days_until_expiry: Math.ceil((new Date(invitation.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    })) || []
+    // Format invitation data with null-safe date handling
+    const formattedInvitations = invitations?.map(invitation => {
+      // Parse dates safely - use current date as fallback if null
+      const expiresAt = invitation.expires_at ? new Date(invitation.expires_at) : new Date()
+      const sentAt = invitation.sent_at ? new Date(invitation.sent_at) : new Date()
+      const now = new Date()
+      
+      return {
+        id: invitation.id,
+        email: invitation.email,
+        status: invitation.status,
+        message: invitation.message,
+        expires_at: invitation.expires_at,
+        sent_at: invitation.sent_at,
+        accepted_at: invitation.accepted_at,
+        created_at: invitation.created_at,
+        updated_at: invitation.updated_at,
+        // Add computed fields for UI - only calculate if dates exist
+        is_expired: invitation.expires_at ? expiresAt < now : false,
+        days_until_expiry: invitation.expires_at 
+          ? Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          : 0
+      }
+    }) || []
 
     return NextResponse.json({
       success: true,

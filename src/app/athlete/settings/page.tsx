@@ -157,14 +157,22 @@ export default function AthleteSettingsPage() {
         emergency_contact_phone: profileData.emergency_contact_phone,
         profile_photo_url: profileData.profile_photo_url,
         experience_level: profileData.experience_level || 'beginner',
-        preferred_units: profileData.preferred_units || 'metric',
+        // Type assertion to ensure it matches the literal type
+        preferred_units: (profileData.preferred_units === 'metric' || profileData.preferred_units === 'imperial') 
+          ? profileData.preferred_units 
+          : 'metric',
         typical_weekly_distance_km: profileData.typical_weekly_distance_km,
         favorite_distances: profileData.favorite_distances || [],
         running_interests: profileData.running_interests || [],
         medical_conditions: profileData.medical_conditions,
         current_injuries: profileData.current_injuries,
         injury_history: profileData.injury_history,
-        profile_visibility: profileData.profile_visibility || 'private',
+        // Type assertion to ensure it matches the literal type
+        profile_visibility: (profileData.profile_visibility === 'public' || 
+                            profileData.profile_visibility === 'private' || 
+                            profileData.profile_visibility === 'coach_only')
+          ? profileData.profile_visibility 
+          : 'private',
         searchable_in_directory: profileData.searchable_in_directory || false
       })
 

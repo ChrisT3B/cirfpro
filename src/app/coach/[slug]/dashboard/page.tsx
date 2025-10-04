@@ -287,13 +287,17 @@ export default function CoachDashboard() {
     )
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    })
-  }
+    const formatDate = (dateString: string): string => {
+      try {
+        return new Date(dateString).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        })
+      } catch (error) {
+        return 'Invalid date'
+      }
+    }
 
 
 const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
@@ -486,8 +490,7 @@ const getStatusBadgeText = (status: string) => {
             )}
           </button>
         </CardHeader>
-        
-        {invitationsSectionOpen && (
+          {invitationsSectionOpen && (
           <CardContent>
             {recentInvitations.length === 0 ? (
               <p className="text-cirfpro-gray-500 text-center py-4">No invitations sent yet</p>
@@ -498,12 +501,12 @@ const getStatusBadgeText = (status: string) => {
                     <div>
                       <p className="font-medium text-cirfpro-gray-900">{invitation.email}</p>
                       <p className="text-sm text-cirfpro-gray-600">
-                        Sent: {formatDate(invitation.sent_at)}
+                        Sent: {invitation.sent_at ? formatDate(invitation.sent_at) : 'N/A'}
                       </p>
                     </div>
-                    <Badge variant={getStatusBadgeVariant(invitation.status)} size="sm">
-                    {getStatusBadgeText(invitation.status)}
-                  </Badge>
+                    <Badge variant={getStatusBadgeVariant(invitation.status || 'pending')} size="sm">
+                      {getStatusBadgeText(invitation.status || 'pending')}
+                    </Badge>
                   </div>
                 ))}
               </div>

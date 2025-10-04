@@ -13,14 +13,21 @@ import type { Database } from '@/types/database.types'
 type PublicCoachData = Database['public']['Views']['public_coach_directory']['Row']
 
 interface CoachData {
-  id: string
-  workspace_slug: string
+  id: string | null
+  workspace_slug: string | null
   workspace_name: string | null
-  first_name: string
-  last_name: string
-  email: string
+  first_name: string | null
+  last_name: string | null
+  email: string | null
   profile_photo_url: string | null
-  public_profile_visible: boolean
+  coaching_philosophy: string | null
+  years_experience: number | null
+  coaching_location: string | null
+  price_range: string | null
+  availability_status: string | null
+  qualifications: string[] | null
+  specializations: string[] | null
+  created_at: string | null
 }
 
 interface CoachLayoutProps {

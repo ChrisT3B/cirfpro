@@ -7,23 +7,23 @@ import { useParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Image from 'next/image'
 
-interface CoachProfile {
-  id: string
-  workspace_slug: string
-  workspace_name: string | null
-  coaching_philosophy: string | null
-  years_experience: number | null
-  coaching_location: string | null
-  price_range: string | null
-  availability_status: string
-  profile_photo_url: string | null
-  qualifications: string[] | null
-  specializations: string[] | null
-  first_name: string
-  last_name: string
-  email: string
-  created_at: string
-}
+  interface CoachProfile {
+    id: string | null
+    workspace_slug: string | null  // ← Add | null
+    workspace_name: string | null
+    coaching_philosophy: string | null
+    years_experience: number | null
+    coaching_location: string | null
+    price_range: string | null
+    availability_status: string | null  // ← Add | null
+    profile_photo_url: string | null
+    qualifications: string[] | null
+    specializations: string[] | null
+    first_name: string | null  // ← Add | null
+    last_name: string | null  // ← Add | null
+    email: string | null  // ← Add | null
+    created_at: string | null  // ← Add | null
+  }
 
 export default function CoachProfilePage() {
   const params = useParams()
@@ -104,7 +104,9 @@ export default function CoachProfilePage() {
               ) : (
                 <div className="w-24 h-24 bg-[#29b643] bg-opacity-10 rounded-full flex items-center justify-center">
                   <span className="text-2xl font-semibold text-[#29b643]">
-                    {coachProfile.first_name[0]}{coachProfile.last_name[0]}
+                    const displayName = coachProfile.workspace_name || 
+                   `${coachProfile.first_name || ''} ${coachProfile.last_name || ''}`.trim() ||
+                   'Coach'
                   </span>
                 </div>
               )}

@@ -7,19 +7,21 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 interface CoachListing {
-  id: string
-  workspace_slug: string
+  id: string | null
+  workspace_slug: string | null
   workspace_name: string | null
   coaching_philosophy: string | null
   years_experience: number | null
   coaching_location: string | null
   price_range: string | null
-  availability_status: string
+  availability_status: string | null
   profile_photo_url: string | null
   qualifications: string[] | null
   specializations: string[] | null
-  first_name: string
-  last_name: string
+  first_name: string | null
+  last_name: string | null
+  email: string | null
+  created_at: string | null
 }
 
 export default function CoachDirectoryPage() {
@@ -56,21 +58,23 @@ export default function CoachDirectoryPage() {
   }, [])
 
   // Filter coaches based on search criteria
-  const filteredCoaches = coaches.filter(coach => {
-    const matchesSearch = searchTerm === '' || 
-      coach.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      coach.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (coach.workspace_name && coach.workspace_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (coach.coaching_location && coach.coaching_location.toLowerCase().includes(searchTerm.toLowerCase()))
-
-    const matchesLocation = locationFilter === '' || 
-      (coach.coaching_location && coach.coaching_location.toLowerCase().includes(locationFilter.toLowerCase()))
-
-    const matchesAvailability = availabilityFilter === '' || 
-      coach.availability_status === availabilityFilter
-
-    return matchesSearch && matchesLocation && matchesAvailability
-  })
+const filteredCoaches = coaches.filter(coach => {
+  const displayName = coach.workspace_name || 
+                     `${coach.first_name || ''} ${coach.last_name || ''}`.trim() || 
+                     'Coach'
+  
+  const matchesSearch = searchTerm === '' || 
+    displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (coach.coaching_location && coach.coaching_location.toLowerCase().includes(searchTerm.toLowerCase()))
+  
+  const matchesLocation = locationFilter === '' || 
+    (coach.coaching_location && coach.coaching_location.toLowerCase().includes(locationFilter.toLowerCase()))
+  
+  const matchesAvailability = availabilityFilter === '' || 
+    coach.availability_status === availabilityFilter
+  
+  return matchesSearch && matchesLocation && matchesAvailability
+})
 
   if (loading) {
     return (
@@ -210,7 +214,9 @@ export default function CoachDirectoryPage() {
                       ) : (
                         <div className="w-16 h-16 bg-[#29b643] bg-opacity-10 rounded-full flex items-center justify-center">
                           <span className="text-xl font-semibold text-[#29b643]">
-                            {coach.first_name[0]}{coach.last_name[0]}
+                            const displayName = coach.workspace_name || 
+                   `${coach.first_name || ''} ${coach.last_name || ''}`.trim() || 
+                   'Coach'
                           </span>
                         </div>
                       )}

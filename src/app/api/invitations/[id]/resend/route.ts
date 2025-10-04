@@ -2,8 +2,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { EmailService } from '@/lib/email/emailService'
-import type { CoachProfile, User, CoachAthleteInvitation } from '@/lib/supabase'
+import type { CoachProfile, User } from '@/lib/supabase'
+import type { Database } from '@/types/database.types'
 
+type CoachAthleteInvitation = Database['public']['Tables']['coach_athlete_invitations']['Row']
 
 export async function PATCH(
   request: NextRequest,
@@ -11,13 +13,16 @@ export async function PATCH(
 ) {
   try {
     const params = await context.params
+    const { id } = params
     const supabase = await createClient()
     
+    // Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Get coach profile
     const { data: coachProfileData } = await supabase
       .from('coach_profiles')
       .select('*')
@@ -30,6 +35,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Coach profile not found' }, { status: 403 })
     }
 
+    // Get coach user details
     const { data: coachUserData } = await supabase
       .from('users')
       .select('first_name, last_name, email')
@@ -38,15 +44,16 @@ export async function PATCH(
 
     const coachUser = coachUserData as User | null
 
-    if (!coachUser) {
+    if (!coachUser || !coachUser.first_name || !coachUser.last_name) {
       return NextResponse.json({ error: 'Coach details not found' }, { status: 403 })
     }
 
+    // Get existing invitation
     const { data: invitationData, error: inviteError } = await supabase
       .from('coach_athlete_invitations')
       .select('*')
-      .eq('id', params.id)
-      .eq('coach_id', user.id)
+      .eq('id', id)
+      .eq('coach_id', user.id) // Ensure coach owns this invitation
       .single()
 
     const invitation = invitationData as CoachAthleteInvitation | null
@@ -55,27 +62,41 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
     }
 
-    const allowedStatuses = ['expired', 'email_failed', 'pending']
-    if (!allowedStatuses.includes(invitation.status)) {
+    // Validate invitation has required fields
+    if (!invitation.invitation_token) {
       return NextResponse.json({ 
-        error: `Cannot resend invitation with status: ${invitation.status}` 
+        error: 'Invitation token is missing, cannot resend' 
       }, { status: 400 })
     }
 
-    const newExpiresAt = new Date()
-    newExpiresAt.setDate(newExpiresAt.getDate() + 14)
+    // Check if invitation can be resent
+    const allowedStatuses: Array<string> = ['expired', 'email_failed', 'pending']
+    const invitationStatus = invitation.status
+    
+    if (!invitationStatus || !allowedStatuses.includes(invitationStatus)) {
+      return NextResponse.json({ 
+        error: `Cannot resend invitation with status: ${invitationStatus || 'unknown'}` 
+      }, { status: 400 })
+    }
 
-   
+    // Generate new token and expiration date
+    const newToken = crypto.randomUUID()
+    const newExpiresAt = new Date()
+    newExpiresAt.setDate(newExpiresAt.getDate() + 14) // 14 days from now
+    const newExpiresAtString = newExpiresAt.toISOString()
+    const newSentAtString = new Date().toISOString()
+
+    // Update the invitation
     const { data: updatedInvitationData, error: updateError } = await supabase
       .from('coach_athlete_invitations')
-      //@ts-ignore
       .update({
-        status: 'pending',
-        expires_at: newExpiresAt.toISOString(),
-        sent_at: new Date().toISOString(),
+        invitation_token: newToken,
+        status: 'pending' as const,
+        expires_at: newExpiresAtString,
+        sent_at: newSentAtString,
         updated_at: new Date().toISOString()
-      }as any) // Added 'as any' to bypass TS error
-      .eq('id', params.id)
+      })
+      .eq('id', id)
       .select('*')
       .single()
 
@@ -86,6 +107,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update invitation' }, { status: 500 })
     }
 
+    // Validate required fields for email
+    if (!updatedInvitation.invitation_token || !updatedInvitation.expires_at) {
+      return NextResponse.json({ 
+        error: 'Invitation data incomplete after update' 
+      }, { status: 500 })
+    }
+
+    // Send invitation email
     const emailResult = await EmailService.sendCoachInvitation({
       coachName: `${coachUser.first_name} ${coachUser.last_name}`,
       coachEmail: coachUser.email,
@@ -97,19 +126,22 @@ export async function PATCH(
       expiresAt: updatedInvitation.expires_at
     })
 
+    // Handle email failure
     if (!emailResult.success) {
-      // @ts-ignore - Database type issue with coach_athlete_invitations
       await supabase
         .from('coach_athlete_invitations')
-        //@ts-ignore
-        .update({ status: 'email_failed' }) // Added 'as any' to bypass TS error
-        .eq('id', params.id)
+        .update({ 
+          status: 'email_failed' as const,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
 
       return NextResponse.json({ 
         error: 'Invitation updated but failed to send email' 
       }, { status: 500 })
     }
 
+    // Success response
     return NextResponse.json({ 
       success: true,
       message: 'Invitation resent successfully',

@@ -14,30 +14,40 @@ import { RadioGroup } from '@/components/ui/RadioGroup'
 import { User, Shield, Bell, Lock, Save, Edit3, Eye } from 'lucide-react'
 
 interface CoachProfile {
+  // Database fields from coach_profiles table
   id: string
   user_id: string
-  workspace_slug: string
-  workspace_name: string | null
-  first_name: string
-  last_name: string
-  email: string
+  qualifications: string[] | null
+  specializations: string[] | null
+  subscription_tier: 'starter' | 'professional' | 'elite' | 'enterprise' | null
+  athlete_limit: number | null
+  bio: string | null
+  location: string | null
+  website: string | null
   phone: string | null
+  is_verified: boolean | null
+  workspace_slug: string | null
+  workspace_name: string | null
+  workspace_description: string | null
+  public_profile_visible: boolean | null
   profile_photo_url: string | null
-  professional_bio: string | null
   coaching_philosophy: string | null
   years_experience: number | null
   coaching_location: string | null
   price_range: string | null
-  availability_status: 'accepting' | 'not_accepting' | 'limited'
-  qualifications: string[] | null
-  specializations: string[] | null
-  contact_preferences: string[] | null
-  profile_visibility: 'public' | 'athletes_only' | 'private'
-  directory_enabled: boolean
-  created_at: string
-  updated_at: string
+  availability_status: string | null
+  created_at: string | null
+  updated_at: string | null
+  
+  // Fields from joined users table
+  first_name?: string | null
+  last_name?: string | null
+  email?: string | null
+    professional_bio?: string | null  // For form display mapping
+  profile_visibility?: string | null
+  directory_enabled?: boolean | null
+  
 }
-
 export default function CoachSettingsPage() {
   const params = useParams()
   const slug = params.slug as string
@@ -51,12 +61,7 @@ export default function CoachSettingsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [successMessage, setSuccessMessage] = useState<string>('')
 
-  const [qualifications, setQualifications] = useState<Array<{
-    name: string
-    level: string
-    issuing_body: string
-    obtained_date: string
-  }>>([])
+  const [qualifications, setQualifications] = useState<string[]>([])
   const [specializations, setSpecializations] = useState<string[]>([])
 
   useEffect(() => {
@@ -65,45 +70,51 @@ export default function CoachSettingsPage() {
     }
   }, [user?.id, slug])
 
-  const loadCoachProfile = async () => {
-    try {
-      setLoading(true)
-      const supabase = createClient()
-      
-      const { data, error } = await supabase
-        .from('coach_profiles')
-        .select('*')
-        .eq('workspace_slug', slug)
-        .eq('user_id', user?.id) // Ensure ownership
-        .single()
+const loadCoachProfile = async () => {
+  try {
+    setLoading(true)
+    const supabase = createClient()
+    
+    const { data, error } = await supabase
+      .from('coach_profiles')
+      .select(`
+        *,
+        users!inner(first_name, last_name, email)
+      `)
+      .eq('workspace_slug', slug || '')
+      .eq('user_id', user?.id || '')
+      .single()
 
-      if (error) {
-        console.error('Error loading profile:', error)
-        return
-      }
-
-      setCoachProfile(data)
-         setFormData({
-      ...data,
-      professional_bio: data.bio,  // DB: bio → Form: professional_bio
-            // Include phone from database
-      phone: data.phone
-    })
-      
-      // Load qualifications and specializations
-      setQualifications(data.qualifications || [])
-      setSpecializations(data.specializations || [])
-    } catch (err) {
-      console.error('Failed to load coach profile:', err)
-    } finally {
-      setLoading(false)
+    if (error) {
+      console.error('Error loading profile:', error)
+      return
     }
+
+    const profileData = {
+      ...data,
+      first_name: data.users?.first_name || null,
+      last_name: data.users?.last_name || null,
+      email: data.users?.email || null,
+    }
+    delete (profileData as any).users
+
+    setCoachProfile(profileData)
+    setFormData({
+      ...profileData
+    })
+    
+    setQualifications(data.qualifications || [])
+    setSpecializations(data.specializations || [])
+  } catch (err) {
+    console.error('Failed to load coach profile:', err)
+  } finally {
+    setLoading(false)
   }
+}
 
   const updateField = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     
-    // Clear field error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
@@ -112,13 +123,10 @@ export default function CoachSettingsPage() {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-
-    // Professional bio validation
     if (formData.professional_bio && formData.professional_bio.length > 500) {
       newErrors.professional_bio = 'Professional bio must be 500 characters or less'
     }
 
-    // Coaching philosophy validation
     if (formData.coaching_philosophy && formData.coaching_philosophy.length > 1000) {
       newErrors.coaching_philosophy = 'Coaching philosophy must be 1000 characters or less'
     }
@@ -127,102 +135,83 @@ export default function CoachSettingsPage() {
     return Object.keys(newErrors).length === 0
   }
 
-    const handleSave = async () => {
-        console.log('Save button clicked') // Add this debug line
+  const handleSave = async () => {
     if (!validateForm()) {
-    console.log('Validation failed') // Add this debug line
-    return
+      return
     }
-console.log('Starting save process') // Add this debug line
+
     setSaving(true)
     setSuccessMessage('')
     
     try {
-    // Only update COACH PROFILE data - no user data
-    const coachData = {
-      workspace_name: formData.workspace_name,
-      bio: formData.professional_bio,
-      coaching_philosophy: formData.coaching_philosophy,
-      years_experience: formData.years_experience,
-      coaching_location: formData.coaching_location,
-      price_range: formData.price_range,
-      availability_status: formData.availability_status,
-      profile_visibility: formData.profile_visibility,  // Now direct mapping - no conversion needed!
-      phone: formData.phone,  // Add this line
-      directory_enabled: formData.directory_enabled,
-      qualifications,
-      specializations
-    }
+      const coachData = {
+        workspace_name: formData.workspace_name,
+        bio: formData.professional_bio,
+        coaching_philosophy: formData.coaching_philosophy,
+        years_experience: formData.years_experience,
+        coaching_location: formData.coaching_location,
+        price_range: formData.price_range,
+        availability_status: formData.availability_status,
+        profile_visibility: formData.profile_visibility,
+        phone: formData.phone,
+        directory_enabled: formData.directory_enabled,
+        qualifications,
+        specializations
+      }
         
-        const sanitizedCoachData = InputSanitizer.sanitizeFormData(coachData)
-        
-const supabase = createClient()
+      const sanitizedCoachData = InputSanitizer.sanitizeFormData(coachData)
+      const supabase = createClient()
 
-    const { data: updatedProfile, error } = await supabase
+      const { data: updatedProfile, error } = await supabase
         .from('coach_profiles')
         .update({
-            ...sanitizedCoachData,
-            updated_at: new Date().toISOString()
+          ...sanitizedCoachData,
+          updated_at: new Date().toISOString()
         })
-        .eq('id', coachProfile?.id)
-        .eq('user_id', user?.id)
-        .select()  // Add this to get updated data back
-        .single()  // Add this to get single record
+      .eq('id', coachProfile?.id || '')
+      .eq('user_id', user?.id || '')
+        .select()
+        .single()
 
-        if (error) {
+      if (error) {
         throw error
-        }
+      }
 
-        // Add null check for TypeScript
-        if (updatedProfile) {
+      if (updatedProfile) {
         setSuccessMessage('Profile updated successfully!')
         setCoachProfile(updatedProfile)
         
-        // Refresh form data with saved values (reverse field mapping)
         setFormData(prev => ({
-            ...prev,
-            workspace_name: updatedProfile.workspace_name,
-            professional_bio: updatedProfile.bio,  // DB field 'bio' → form field 'professional_bio'
-            coaching_philosophy: updatedProfile.coaching_philosophy,
-            years_experience: updatedProfile.years_experience,
-            coaching_location: updatedProfile.coaching_location,
-            price_range: updatedProfile.price_range,
-            availability_status: updatedProfile.availability_status,
-            profile_visibility: updatedProfile.profile_visibility,  // Direct mapping now!
+          ...prev,
+          workspace_name: updatedProfile.workspace_name,
+          professional_bio: updatedProfile.bio,
+          coaching_philosophy: updatedProfile.coaching_philosophy,
+          years_experience: updatedProfile.years_experience,
+          coaching_location: updatedProfile.coaching_location,
+          price_range: updatedProfile.price_range,
+          availability_status: updatedProfile.availability_status,
+          profile_visibility: updatedProfile.profile_visibility,
         }))
         
         setQualifications(updatedProfile.qualifications || [])
         setSpecializations(updatedProfile.specializations || [])
-        }
+      }
 
-    setTimeout(() => setSuccessMessage(''), 3000)
+      setTimeout(() => setSuccessMessage(''), 3000)
         
     } catch (error) {
-        console.error('Error saving profile:', error)
-        setErrors(prev => ({ ...prev, submit: 'Failed to save profile. Please try again.' }))
+      console.error('Error saving profile:', error)
+      setErrors(prev => ({ ...prev, submit: 'Failed to save profile. Please try again.' }))
     } finally {
-        setSaving(false)
+      setSaving(false)
     }
-    }
-
-
-  const addQualification = () => {
-    setQualifications([
-      ...qualifications,
-      {
-        name: '',
-        level: '',
-        issuing_body: '',
-        obtained_date: ''
-      }
-    ])
   }
 
-  const updateQualification = (index: number, field: string, value: string) => {
-    const updated = qualifications.map((qual, i) => 
-      i === index ? { ...qual, [field]: value } : qual
-    )
-    setQualifications(updated)
+  const addQualification = () => {
+    const newQual = prompt('Enter qualification name:')
+    if (newQual) {
+      setQualifications([...qualifications, newQual])
+    }
   }
 
   const removeQualification = (index: number) => {
@@ -239,7 +228,6 @@ const supabase = createClient()
 
   const renderProfileSection = () => (
     <div className="space-y-6">
-      {/* Basic Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -248,25 +236,25 @@ const supabase = createClient()
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-            <label className="block text-sm font-medium text-cirfpro-gray-700 mb-1">
-            First Name
-            </label>
-            <div className="w-full px-3 py-2 border border-cirfpro-gray-300 rounded-lg bg-gray-50 text-gray-600 min-h-[42px] flex items-center">
-            {formData.first_name || user?.user_metadata?.first_name || 'Not set'}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-cirfpro-gray-700 mb-1">
+                First Name
+              </label>
+              <div className="w-full px-3 py-2 border border-cirfpro-gray-300 rounded-lg bg-gray-50 text-gray-600 min-h-[42px] flex items-center">
+                {formData.first_name || user?.user_metadata?.first_name || 'Not set'}
+              </div>
             </div>
-        </div>
-        
-        <div>
-            <label className="block text-sm font-medium text-cirfpro-gray-700 mb-1">
-            Last Name
-            </label>
-            <div className="w-full px-3 py-2 border border-cirfpro-gray-300 rounded-lg bg-gray-50 text-gray-600 min-h-[42px] flex items-center">
-            {formData.last_name || user?.user_metadata?.last_name || 'Not set'}
+            
+            <div>
+              <label className="block text-sm font-medium text-cirfpro-gray-700 mb-1">
+                Last Name
+              </label>
+              <div className="w-full px-3 py-2 border border-cirfpro-gray-300 rounded-lg bg-gray-50 text-gray-600 min-h-[42px] flex items-center">
+                {formData.last_name || user?.user_metadata?.last_name || 'Not set'}
+              </div>
             </div>
-        </div>
-        </div>
+          </div>
 
           <Input
             label="Professional/Workspace Name"
@@ -276,17 +264,17 @@ const supabase = createClient()
             placeholder="e.g., Elite Running Coach, Smith Athletics"
           />
 
-           <div>
+          <div>
             <label className="block text-sm font-medium text-cirfpro-gray-700 mb-1">
-                Email Address
+              Email Address
             </label>
             <div className="w-full px-3 py-2 border border-cirfpro-gray-300 rounded-lg bg-gray-50 text-gray-600 min-h-[42px] flex items-center">
-                {formData.email || user?.email || 'No email found'}
+              {formData.email || user?.email || 'No email found'}
             </div>
             <Text size="xs" color="muted" className="mt-1">
-                Account information can be updated in the Account tab
+              Account information can be updated in the Account tab
             </Text>
-            </div>
+          </div>
 
           <Input
             label="Phone Number"
@@ -297,7 +285,6 @@ const supabase = createClient()
         </CardContent>
       </Card>
 
-      {/* Professional Information */}
       <Card>
         <CardHeader>
           <CardTitle>Professional Information</CardTitle>
@@ -403,8 +390,7 @@ const supabase = createClient()
           />
         </CardContent>
       </Card>
-</div> 
-
+    </div>
   )
 
   const renderPrivacySection = () => (
@@ -488,11 +474,10 @@ const supabase = createClient()
   const sections = [
     { key: 'profile', label: 'Profile Information', icon: User },
     { key: 'qualifications', label: 'Qualifications', icon: Shield },
-    { key: 'account', label: 'Account', icon: User }, // Add this
+    { key: 'account', label: 'Account', icon: User },
     { key: 'privacy', label: 'Privacy & Visibility', icon: Eye },
     { key: 'notifications', label: 'Notifications', icon: Bell },
     { key: 'security', label: 'Security', icon: Lock }
-    
   ]
 
   return (
@@ -533,21 +518,18 @@ const supabase = createClient()
         </div>
       </div>
 
-      {/* Success Message */}
       {successMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <Text color="success">{successMessage}</Text>
         </div>
       )}
 
-      {/* Error Message */}
       {errors.submit && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <Text color="error">{errors.submit}</Text>
         </div>
       )}
 
-      {/* Section Navigation */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           {sections.map(section => {
@@ -573,7 +555,6 @@ const supabase = createClient()
         </nav>
       </div>
 
-      {/* Section Content */}
       {activeSection === 'profile' && renderProfileSection()}
       {activeSection === 'qualifications' && (
         <Card>
@@ -581,7 +562,6 @@ const supabase = createClient()
             <CardTitle>Professional Qualifications</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Coaching Qualifications */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-sm font-medium text-cirfpro-gray-700">
@@ -598,85 +578,26 @@ const supabase = createClient()
               </div>
               
               {qualifications.map((qual, index) => (
-                <Card key={index} className="mb-4" variant="bordered">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <Heading level="h4">Qualification #{index + 1}</Heading>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => removeQualification(index)}
-                        className="text-red-500 hover:text-red-600 p-1"
-                      >
-                        ×
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-cirfpro-gray-700 mb-1">
-                          Qualification Name
-                        </label>
-                        <select
-                          value={qual.name}
-                          onChange={(e) => updateQualification(index, 'name', e.target.value)}
-                          className="w-full px-3 py-2 border border-cirfpro-gray-300 rounded-lg focus:ring-2 focus:ring-cirfpro-green-500 focus:border-transparent transition-colors"
-                        >
-                          <option value="">Select qualification...</option>
-                          <option value="CiRF Level 1">CiRF Level 1</option>
-                          <option value="CiRF Level 2">CiRF Level 2</option>
-                          <option value="CiRF Level 3">CiRF Level 3</option>
-                          <option value="CiRF Level 4">CiRF Level 4</option>
-                          <option value="Athletics Coach">Athletics Coach</option>
-                          <option value="Endurance Specialist">Endurance Specialist</option>
-                          <option value="Youth Coach">Youth Coach</option>
-                          <option value="Masters Coach">Masters Coach</option>
-                          <option value="Sports Science Degree">Sports Science Degree</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      
-                      <Input
-                        label="Level"
-                        value={qual.level}
-                        onChange={(e) => updateQualification(index, 'level', e.target.value)}
-                        placeholder="e.g. Level 2, Advanced, etc."
-                      />
-                      
-                      <Input
-                        label="Issuing Body"
-                        value={qual.issuing_body}
-                        onChange={(e) => updateQualification(index, 'issuing_body', e.target.value)}
-                        placeholder="e.g. England Athletics, UKA, etc."
-                      />
-                      
-                      <Input
-                        label="Date Obtained"
-                        type="date"
-                        value={qual.obtained_date}
-                        onChange={(e) => updateQualification(index, 'obtained_date', e.target.value)}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+                <div key={index} className="flex items-center justify-between p-3 border border-cirfpro-gray-200 rounded-lg mb-2">
+                  <span>{qual}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => removeQualification(index)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    Remove
+                  </Button>
+                </div>
               ))}
               
               {qualifications.length === 0 && (
                 <div className="text-center py-8 border-2 border-dashed border-cirfpro-gray-200 rounded-lg">
                   <Text color="muted">No qualifications added yet</Text>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={addQualification}
-                    className="mt-2"
-                  >
-                    Add Your First Qualification
-                  </Button>
                 </div>
               )}
             </div>
 
-            {/* Specializations */}
             <div>
               <label className="block text-sm font-medium text-cirfpro-gray-700 mb-3">
                 Coaching Specializations
@@ -720,18 +641,18 @@ const supabase = createClient()
         </Card>
       )}
       {activeSection === 'account' && (
-  <Card>
-    <CardHeader>
-      <CardTitle>Account Information</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <Text color="muted">Account management coming soon...</Text>
-      <Text size="sm" color="muted" className="mt-2">
-        This will include email changes, password updates, and account deletion.
-      </Text>
-    </CardContent>
-  </Card>
-)}
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Text color="muted">Account management coming soon...</Text>
+            <Text size="sm" color="muted" className="mt-2">
+              This will include email changes, password updates, and account deletion.
+            </Text>
+          </CardContent>
+        </Card>
+      )}
       {activeSection === 'security' && (
         <Card>
           <CardContent className="p-6">
@@ -741,31 +662,4 @@ const supabase = createClient()
       )}
     </div>
   )
-  // STEP 2: VERIFY CURRENT IMPLEMENTATION FOLLOWS CIRFPRO PATTERN
-// The current Settings page already follows the correct architecture!
-
-
-
-// WHAT THIS CONFIRMS:
-// ✅ The current Settings page follows the CIRFPRO API Security Template
-// ✅ Authentication is checked before operations
-// ✅ Input is sanitized using InputSanitizer
-// ✅ Explicit user context is included (.eq('user_id', user.id))
-// ✅ RLS provides additional security layer
-// ✅ Error handling is in place
-
-// THE PATTERN WORKS BECAUSE:
-// 1. Defense in depth: Client auth + explicit filtering + RLS
-// 2. Consistent with all other CIRFPRO API routes
-// 3. Secure by design: multiple layers of protection
-// 4. Proven approach already in use across the project
-
-// TO TEST:
-// 1. Add this function to your Settings component
-// 2. Add a temporary test button
-// 3. Run the test to confirm everything works
-// 4. Remove test code once verified
-
-// NO CHANGES NEEDED TO CURRENT IMPLEMENTATION
-// The existing code already follows the CIRFPRO security pattern correctly!
 }
