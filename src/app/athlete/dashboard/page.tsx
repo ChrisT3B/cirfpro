@@ -1,158 +1,192 @@
+// src/app/athlete/dashboard/page.tsx
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Heading, Text } from '@/components/ui/Typography'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Heading, Text, Caption } from '@/components/ui/Typography'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Loader2, User, Activity, Settings } from 'lucide-react'
-import Link from 'next/link'
+import PendingInvitationCard from '@/components/athlete/PendingInvitationCard' //cirfpro\src\components\athlete\PendingInvitationCard.tsx
 
-export default function AthleteDashboardPage() {
+interface PendingInvitation {
+  id: string
+  coachId: string
+  email: string
+  message: string | null
+  status: string
+  expiresAt: string
+  sentAt: string
+  invitationToken: string
+  coach: {
+    name: string
+    email: string
+    qualifications: string[]
+    photoUrl: string | null
+    philosophy: string | null
+    yearsExperience: number | null
+  }
+}
+
+export default function AthleteDashboard() {
+  const { user, profile, athleteProfile, loading: authLoading, isAthlete } = useAuth()
   const router = useRouter()
-  const { 
-    user, 
-    loading: authLoading,
-    isAthlete,
-    firstName,
-    athleteProfile,
-    signOut
-  } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
+  const [loadingInvitations, setLoadingInvitations] = useState(true)
 
-  // JWT-FIRST AUTHORIZATION CHECK
+  // Authorization check
   useEffect(() => {
-    console.log('🔒 Athlete dashboard authorization check...', {
-      authLoading,
-      user: !!user,
-      isAthlete
-    })
-
-    if (authLoading) {
-      console.log('⏳ Auth still loading...')
-      return
-    }
+    if (authLoading) return
 
     if (!user) {
-      console.log('🚫 No user, redirecting to home')
-      window.location.href = '/'
+      router.push('/auth/signin')
       return
     }
 
     if (!isAthlete) {
-      console.log('🚫 Not an athlete, redirecting to home')
-      window.location.href = '/'
+      router.push('/dashboard')
       return
     }
 
-    console.log('✅ Athlete dashboard - authorization passed')
-
+    setLoading(false)
   }, [authLoading, user, isAthlete, router])
 
-  // Show loading while auth initializes
-  if (authLoading) {
+  // Check for pending invitation from sessionStorage (from email link)
+  useEffect(() => {
+    const checkPendingInvitation = async () => {
+      const invitationToken = sessionStorage.getItem('pendingInvitationToken')
+      
+      if (invitationToken && user) {
+        // Validate the token is still valid and for this user
+        try {
+          const response = await fetch(`/api/invitations/validate/${invitationToken}`)
+          const data = await response.json()
+          
+          if (data.valid && data.invitation.email === profile?.email) {
+            // Token is valid and matches user - it will be shown in pending invitations
+            console.log('Valid pending invitation detected from email link')
+          }
+          
+          // Clear the token from sessionStorage regardless
+          sessionStorage.removeItem('pendingInvitationToken')
+        } catch (error) {
+          console.error('Error checking pending invitation:', error)
+          sessionStorage.removeItem('pendingInvitationToken')
+        }
+      }
+    }
+
+    if (!authLoading && user && profile) {
+      checkPendingInvitation()
+    }
+  }, [authLoading, user, profile])
+
+  // Fetch pending invitations from database
+  useEffect(() => {
+    const fetchPendingInvitations = async () => {
+      if (!user) return
+
+      try {
+        setLoadingInvitations(true)
+        const response = await fetch('/api/invitations/pending')
+        
+        if (response.ok) {
+          const data = await response.json()
+          setPendingInvitations(data.invitations || [])
+        } else {
+          console.error('Failed to fetch pending invitations')
+        }
+      } catch (error) {
+        console.error('Error fetching pending invitations:', error)
+      } finally {
+        setLoadingInvitations(false)
+      }
+    }
+
+    if (!authLoading && user) {
+      fetchPendingInvitations()
+    }
+  }, [authLoading, user])
+
+  // Refresh invitations after acceptance
+  const handleInvitationAccepted = () => {
+    // Refresh the pending invitations list
+    const fetchPendingInvitations = async () => {
+      try {
+        const response = await fetch('/api/invitations/pending')
+        if (response.ok) {
+          const data = await response.json()
+          setPendingInvitations(data.invitations || [])
+        }
+      } catch (error) {
+        console.error('Error refreshing invitations:', error)
+      }
+    }
+
+    fetchPendingInvitations()
+  }
+
+  if (loading || authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cirfpro-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-cirfpro-green-500" />
-          <Text color="muted">Loading dashboard...</Text>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     )
   }
 
-  // Not authorized
-  if (!user || !isAthlete) {
-    return null
-  }
+  const firstName = profile?.first_name || 'Athlete'
 
   return (
-    <div className="min-h-screen bg-cirfpro-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-cirfpro-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Heading level="h1" className="text-cirfpro-gray-900">
-                Athlete Dashboard
-              </Heading>
-              <Text size="sm" color="muted">
-                Welcome back, {firstName}! 👋
-              </Text>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/athlete/settings">
-                <Button variant="secondary" className="flex items-center space-x-2">
-                  <Settings className="w-4 h-4" />
-                  <span>Settings</span>
-                </Button>
-              </Link>
-              <Button variant="outline" onClick={signOut}>
-                Sign Out
-              </Button>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+        {/* Welcome Header */}
+        <div>
+          <Heading level="h1">Welcome back, {firstName}!</Heading>
+          <Text color="muted" className="mt-2">
+            {athleteProfile?.coach_id 
+              ? 'Track your progress and stay connected with your coach.'
+              : 'Your athlete dashboard is ready.'}
+          </Text>
+        </div>
+
+        {/* Pending Invitations Section */}
+        {loadingInvitations ? (
+          <Card>
+            <CardContent className="py-8">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                <Text className="ml-3">Checking for pending invitations...</Text>
+              </div>
+            </CardContent>
+          </Card>
+        ) : pendingInvitations.length > 0 ? (
+          <div className="space-y-4">
+            {pendingInvitations.map((invitation) => (
+              <PendingInvitationCard
+                key={invitation.id}
+                invitation={invitation}
+                onAccepted={handleInvitationAccepted}
+              />
+            ))}
           </div>
-        </div>
-      </header>
+        ) : null}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Quick Actions */}
+        {!athleteProfile?.coach_id && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-base">
-                <Activity className="w-5 h-5 text-blue-500" />
-                <span>This Week</span>
-              </CardTitle>
+              <CardTitle>Get Started</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-cirfpro-gray-900">0</div>
-              <Text size="sm" color="muted">Training sessions completed</Text>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-base">
-                <Activity className="w-5 h-5 text-green-500" />
-                <span>Total Distance</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-cirfpro-gray-900">0 km</div>
-              <Text size="sm" color="muted">This month</Text>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-base">
-                <User className="w-5 h-5 text-purple-500" />
-                <span>Profile</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Text className="font-medium capitalize">
-                {athleteProfile?.experience_level || 'Not set'}
+              <Text color="muted" className="mb-4">
+                Complete your profile and connect with a professional coach to begin your training journey.
               </Text>
-              <Text size="sm" color="muted">Experience level</Text>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Area */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Getting Started</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Text>
-                Welcome to CIRFPRO! Your athlete dashboard is ready.
-              </Text>
-              <div className="flex space-x-4">
+              <div className="flex flex-wrap gap-3">
                 <Link href="/athlete/settings">
                   <Button variant="primary">
                     Complete Your Profile
@@ -164,6 +198,34 @@ export default function AthleteDashboardPage() {
                   </Button>
                 </Link>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Training Overview - Placeholder for future development */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Training Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <Text color="muted">
+                Your training data will appear here once you connect with a coach.
+              </Text>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity - Placeholder */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <Text color="muted">
+                No recent activity to display.
+              </Text>
             </div>
           </CardContent>
         </Card>
