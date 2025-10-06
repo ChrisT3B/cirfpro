@@ -4,10 +4,12 @@ import { createClient } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const token = params.token
+    // Await params in Next.js 15
+    const { token } = await params
+    
     const supabase = createClient()
 
     // Fetch invitation with coach details
@@ -69,22 +71,30 @@ export async function GET(
       .single()
 
     const hasAccount = !!existingUser
+    const existingUserRole = existingUser?.role || null
 
-    // Format coach details
-    const coachProfile = invitation.coach_profiles as any
-    const coachUser = coachProfile.users as any
+    // FIX: Access first element of coach_profiles array
+    const coachProfile = Array.isArray(invitation.coach_profiles) 
+      ? invitation.coach_profiles[0] 
+      : invitation.coach_profiles
+    
+    if (!coachProfile) {
+      return NextResponse.json(
+        { error: 'Coach profile not found', valid: false },
+        { status: 404 }
+      )
+    }
 
-    const coachDetails = {
-      name: `${coachUser.first_name} ${coachUser.last_name}`,
-      firstName: coachUser.first_name,
-      lastName: coachUser.last_name,
-      email: coachUser.email,
-      photoUrl: coachProfile.profile_photo_url,
-      qualifications: coachProfile.qualifications || [],
-      specializations: coachProfile.specializations || [],
-      philosophy: coachProfile.coaching_philosophy,
-      yearsExperience: coachProfile.years_experience,
-      workspaceSlug: coachProfile.workspace_slug
+    // Access nested users data
+    const coachUser = Array.isArray(coachProfile.users)
+      ? coachProfile.users[0]
+      : coachProfile.users
+
+    if (!coachUser) {
+      return NextResponse.json(
+        { error: 'Coach user data not found', valid: false },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json({
@@ -98,17 +108,28 @@ export async function GET(
         sentAt: invitation.sent_at,
         isExpired,
         isAccepted,
-        isCancelled
+        isCancelled,
       },
-      coach: coachDetails,
+      coach: {
+        name: `${coachUser.first_name} ${coachUser.last_name}`,
+        firstName: coachUser.first_name,
+        lastName: coachUser.last_name,
+        email: coachUser.email,
+        photoUrl: coachProfile.profile_photo_url,
+        qualifications: coachProfile.qualifications || [],
+        specializations: coachProfile.specializations || [],
+        philosophy: coachProfile.coaching_philosophy,
+        yearsExperience: coachProfile.years_experience,
+        workspaceSlug: coachProfile.workspace_slug,
+      },
       hasAccount,
-      existingUserRole: existingUser?.role || null
+      existingUserRole,
     })
 
   } catch (error) {
     console.error('Error validating invitation:', error)
     return NextResponse.json(
-      { error: 'Failed to validate invitation', valid: false },
+      { error: 'Internal server error', valid: false },
       { status: 500 }
     )
   }
