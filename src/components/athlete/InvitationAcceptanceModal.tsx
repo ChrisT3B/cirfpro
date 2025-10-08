@@ -125,6 +125,34 @@ console.log('✅ Using coach_profile.id:', coachProfileData.id)
         console.error('Error updating athlete profile:', profileError)
         }
 
+        // ✨ NEW: Send notification email to coach (non-blocking)
+        try {
+        console.log('📧 Sending coach notification email...')
+        
+        const emailResult = await fetch('/api/notifications/coach-acceptance', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+            coachId: coachProfileData.id,  // Use the coach profile ID
+            athleteId: athleteProfile.id,  // Use the athlete profile ID
+            acceptedAt: new Date().toISOString(),
+            }),
+        })
+
+        if (emailResult.ok) {
+            console.log('✅ Coach notification email sent successfully')
+        } else {
+            // Log error but don't fail acceptance - email is non-critical
+            const errorData = await emailResult.json()
+            console.error('⚠️ Failed to send coach notification email:', errorData)
+        }
+        } catch (emailError) {
+        // Log error but don't fail acceptance - email is non-critical
+        console.error('⚠️ Error sending coach notification:', emailError)
+        }
+
         // Success! Call the parent callback
         setTimeout(() => {
         onAccepted()

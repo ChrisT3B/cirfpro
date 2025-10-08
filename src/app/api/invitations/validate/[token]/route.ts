@@ -1,46 +1,33 @@
 // src/app/api/invitations/validate/[token]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  context: { params: Promise<{ token: string }> }
 ) {
   try {
-    // Await params in Next.js 15
-    const { token } = await params
+    const params = await context.params
+    const token = params.token
     
-    const supabase = createClient()
+    console.log('🔍 Validating invitation token:', token)
+    
+    const supabase = await createClient()
 
-    // Fetch invitation with coach details
+    // Step 1: Get the invitation first
     const { data: invitation, error: invitationError } = await supabase
       .from('coach_athlete_invitations')
-      .select(`
-        id,
-        coach_id,
-        email,
-        message,
-        status,
-        expires_at,
-        sent_at,
-        accepted_at,
-        coach_profiles!inner (
-          id,
-          workspace_slug,
-          qualifications,
-          specializations,
-          coaching_philosophy,
-          years_experience,
-          profile_photo_url,
-          users!inner (
-            first_name,
-            last_name,
-            email
-          )
-        )
-      `)
+      .select('*')
       .eq('invitation_token', token)
       .single()
+
+    console.log('🔍 Invitation data:', {
+      found: !!invitation,
+      coach_id: invitation?.coach_id,
+      email: invitation?.email,
+      status: invitation?.status,
+      error: invitationError?.message
+    })
 
     if (invitationError || !invitation) {
       return NextResponse.json(
@@ -49,18 +36,60 @@ export async function GET(
       )
     }
 
-    // Check if invitation is expired
+    // Step 2: Get coach user details - check if coach_id exists first
+    if (!invitation.coach_id) {
+      console.log('❌ No coach_id in invitation')
+      return NextResponse.json(
+        { error: 'Invalid invitation: missing coach', valid: false },
+        { status: 404 }
+      )
+    }
+
+    console.log('🔍 Looking for coach user with ID:', invitation.coach_id)
+
+    const { data: coachUsers, error: coachUserError } = await supabase
+      .from('users')
+      .select('id, email, first_name, last_name, role')
+      .eq('id', invitation.coach_id)
+
+    console.log('🔍 Coach user query result:', {
+      count: coachUsers?.length,
+      data: coachUsers,
+      error: coachUserError?.message
+    })
+
+    if (coachUserError || !coachUsers || coachUsers.length === 0) {
+      console.log('❌ Coach user not found')
+      return NextResponse.json(
+        { error: 'Coach not found', valid: false },
+        { status: 404 }
+      )
+    }
+
+    const coachUser = coachUsers[0]
+
+    // Step 3: Get coach profile details
+    const { data: coachProfile, error: coachProfileError } = await supabase
+      .from('coach_profiles')
+      .select('*')
+      .eq('user_id', invitation.coach_id)
+      .single()
+
+    console.log('🔍 Coach profile found:', !!coachProfile, coachProfileError?.message)
+
+    if (coachProfileError || !coachProfile) {
+      return NextResponse.json(
+        { error: 'Coach profile not found', valid: false },
+        { status: 404 }
+      )
+    }
+
+    // Check invitation validity
     const now = new Date()
     const expiresAt = invitation.expires_at ? new Date(invitation.expires_at) : null
     const isExpired = expiresAt ? now > expiresAt : false
-
-    // Check if already accepted
     const isAccepted = invitation.status === 'accepted' || invitation.accepted_at !== null
-
-    // Check if cancelled
     const isCancelled = invitation.status === 'cancelled'
-
-    // Determine validity
     const isValid = !isExpired && !isAccepted && !isCancelled && invitation.status === 'pending'
 
     // Check if athlete email already has an account
@@ -73,29 +102,7 @@ export async function GET(
     const hasAccount = !!existingUser
     const existingUserRole = existingUser?.role || null
 
-    // FIX: Access first element of coach_profiles array
-    const coachProfile = Array.isArray(invitation.coach_profiles) 
-      ? invitation.coach_profiles[0] 
-      : invitation.coach_profiles
-    
-    if (!coachProfile) {
-      return NextResponse.json(
-        { error: 'Coach profile not found', valid: false },
-        { status: 404 }
-      )
-    }
-
-    // Access nested users data
-    const coachUser = Array.isArray(coachProfile.users)
-      ? coachProfile.users[0]
-      : coachProfile.users
-
-    if (!coachUser) {
-      return NextResponse.json(
-        { error: 'Coach user data not found', valid: false },
-        { status: 404 }
-      )
-    }
+    console.log('✅ Validation complete:', { isValid, hasAccount })
 
     return NextResponse.json({
       valid: isValid,
@@ -127,7 +134,7 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('Error validating invitation:', error)
+    console.error('❌ Error validating invitation:', error)
     return NextResponse.json(
       { error: 'Internal server error', valid: false },
       { status: 500 }

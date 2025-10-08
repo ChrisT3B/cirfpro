@@ -1,4 +1,4 @@
-// src/middleware.ts - Add debug logging
+// src/middleware.ts - Updated with public API route support
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database.types'
@@ -7,6 +7,17 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   console.log('🔀 Middleware executing for:', pathname)
   
+  // ✅ SKIP middleware for public API routes (no authentication required)
+  const publicApiRoutes = [
+    '/api/invitations/validate',
+    '/api/auth/callback',
+  ]
+  
+  if (publicApiRoutes.some(route => pathname.startsWith(route))) {
+    console.log('🔀 Public API route, skipping authentication')
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -63,39 +74,36 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url)
       }
 
-// src/middleware.ts
-// Replace the workspace ownership check section with:
+      try {
+        const { data: workspaceOwner } = await supabase
+          .from('coach_profiles')
+          .select('user_id, users!inner(email)')
+          .eq('workspace_slug', slug)
+          .single()
 
-try {
-  const { data: workspaceOwner } = await supabase
-    .from('coach_profiles')
-    .select('user_id, users!inner(email)')
-    .eq('workspace_slug', slug)
-    .single()
+        const owner = workspaceOwner as any
+        
+        if (!owner || user.email !== owner.users?.email) {
+          // User doesn't own this workspace, redirect to their own
+          const { data: userWorkspace } = await supabase
+            .from('coach_profiles')
+            .select('workspace_slug, users!inner(email)')
+            .eq('user_id', user.id)
+            .single()
 
-  const owner = workspaceOwner as any
-  
-  if (!owner || user.email !== owner.users?.email) {
-    // User doesn't own this workspace, redirect to their own
-    const { data: userWorkspace } = await supabase
-      .from('coach_profiles')
-      .select('workspace_slug, users!inner(email)')
-      .eq('user_id', user.id)
-      .single()
+          const workspace = userWorkspace as any
 
-    const workspace = userWorkspace as any
-
-    if (workspace?.workspace_slug) {
-      url.pathname = `/coach/${workspace.workspace_slug}/dashboard`
-      return NextResponse.redirect(url)
-    } else {
-      url.pathname = '/dashboard'
-      return NextResponse.redirect(url)
-    }
-  }
-} catch (error) {
-  console.error('Middleware workspace check error:', error)
-}
+          if (workspace?.workspace_slug) {
+            url.pathname = `/coach/${workspace.workspace_slug}/dashboard`
+            return NextResponse.redirect(url)
+          } else {
+            url.pathname = '/dashboard'
+            return NextResponse.redirect(url)
+          }
+        }
+      } catch (error) {
+        console.error('Middleware workspace check error:', error)
+      }
     }
   }
 
