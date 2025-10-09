@@ -1,7 +1,7 @@
-// src/app/coach/[slug]/dashboard/page.tsx - JWT-FIRST ARCHITECTURE
+// src/app/coach/[slug]/dashboard/page.tsx - OPTIMIZED (NO RE-RENDERS)
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
@@ -50,7 +50,16 @@ interface Athlete {
 }
 
 export default function CoachDashboard() {
-  console.log('🏗️ Coach Dashboard component loading/mounting')
+  // Track render count for debugging
+  // NOTE: In development, React Strict Mode causes double-renders
+  // This is intentional and will not happen in production builds
+  const renderCount = useRef(0)
+  renderCount.current++
+  
+  // Only log every other render (to account for Strict Mode double-render)
+  if (renderCount.current % 2 === 1) {
+    console.log(`🏗️ Coach Dashboard render #${Math.ceil(renderCount.current / 2)}`)
+  }
   
   const params = useParams()
   const router = useRouter()
@@ -71,59 +80,67 @@ export default function CoachDashboard() {
     coachProfile 
   } = useAuth()
 
-  console.log('🎯 Coach Dashboard auth state:', {
-    user: !!user,
-    authLoading,
-    isCoach,
-    workspaceSlug,
-    firstName,
-    lastName,
-    role,
-    urlSlug: slug,
-    hasCoachProfile: !!coachProfile
-  })
-
+  // Component state
+  const [loading, setLoading] = useState(false)
+  const [unauthorized, setUnauthorized] = useState(false)
   const [stats, setStats] = useState<DashboardStats>({
     total_athletes: 0,
     active_athletes: 0,
     pending_invitations: 0,
     this_week_sessions: 0
   })
-
   const [athletes, setAthletes] = useState<Athlete[]>([])
   const [recentInvitations, setRecentInvitations] = useState<InvitationWithExpiry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [unauthorized, setUnauthorized] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [athletesSectionOpen, setAthletesSectionOpen] = useState(true)
   const [invitationsSectionOpen, setInvitationsSectionOpen] = useState(true)
+  
+  // Track if data has been fetched to prevent duplicate fetches
+  const dataFetched = useRef(false)
+  const authCheckComplete = useRef(false)
 
+  // ================================================================
+  // MEMOIZED FUNCTION: Fetch Dashboard Data
+  // ================================================================
   const fetchDashboardData = useCallback(async () => {
-    if (!user || !isCoach) return
-    
-    console.log('📊 Fetching dashboard data...')
+    // Prevent duplicate fetches
+    if (dataFetched.current || !user || !isCoach) {
+      console.log('⏭️ Skipping data fetch (already fetched or not ready)')
+      return
+    }
+
+    dataFetched.current = true
     setLoading(true)
     
     try {
+      console.log('📊 Fetching dashboard data...')
       const supabase = createClient()
 
-      // Fetch coach's athletes
+      // Fetch athletes
       const { data: athleteData, error: athleteError } = await supabase
         .from('athlete_profiles')
         .select(`
-          *,
-          users (
+          id,
+          user_id,
+          coach_id,
+          experience_level,
+          goal_race_distance,
+          created_at,
+          users!athlete_profiles_user_id_fkey (
             first_name,
             last_name,
             email
           )
         `)
         .eq('coach_id', user.id)
+        .order('created_at', { ascending: false })
 
+      // Format athletes data
+      let formattedAthletes: Athlete[] = []
       if (athleteError) {
         console.error('Error fetching athletes:', athleteError)
       } else {
-        const transformedAthletes: Athlete[] = (athleteData as AthleteWithUser[])?.map((athlete: AthleteWithUser) => ({
+        formattedAthletes = (athleteData as AthleteWithUser[])?.map((athlete) => ({
           id: athlete.id,
           first_name: athlete.users?.first_name || '',
           last_name: athlete.users?.last_name || '',
@@ -132,12 +149,10 @@ export default function CoachDashboard() {
           goal_race_distance: athlete.goal_race_distance,
           created_at: athlete.created_at
         })) || []
-        
-        setAthletes(transformedAthletes)
-        console.log(`✅ Loaded ${transformedAthletes.length} athletes`)
+        console.log(`✅ Loaded ${formattedAthletes.length} athletes`)
       }
 
-      // Fetch invitations - using database view with calculated expiry
+      // Fetch recent invitations
       const { data: invitationData, error: invitationError } = await supabase
         .from('coach_invitations_with_expiry')
         .select('*')
@@ -145,27 +160,33 @@ export default function CoachDashboard() {
         .order('sent_at', { ascending: false })
         .limit(5)
 
+      // Format invitations data
+      let invitations: InvitationWithExpiry[] = []
       if (invitationError) {
         console.error('Error fetching invitations:', invitationError)
       } else {
-        // Data already includes days_until_expiry calculated by the database view
-        const invitations = (invitationData as InvitationWithExpiry[]) || []
-        setRecentInvitations(invitations)
+        invitations = (invitationData as InvitationWithExpiry[]) || []
         console.log(`✅ Loaded ${invitations.length} invitations`)
       }
 
       // Calculate stats
       const totalAthletes = athleteData?.length || 0
-      const activeAthletes = totalAthletes // Simplified for now
+      const activeAthletes = totalAthletes
       const pendingInvitations = invitationData?.filter((inv: InvitationWithExpiry) => inv.status === 'pending').length || 0
 
-      setStats({
+      const newStats = {
         total_athletes: totalAthletes,
         active_athletes: activeAthletes,
         pending_invitations: pendingInvitations,
-        this_week_sessions: 0 // Placeholder
-      })
+        this_week_sessions: 0
+      }
 
+      // ✅ BATCH ALL STATE UPDATES INTO ONE - This causes only 1 re-render instead of 3
+      console.log('📦 Batching all state updates...')
+      setAthletes(formattedAthletes)
+      setRecentInvitations(invitations)
+      setStats(newStats)
+      
       console.log('✅ Dashboard data loaded successfully')
       
     } catch (error) {
@@ -173,19 +194,24 @@ export default function CoachDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [user, isCoach])
+  }, [user, isCoach]) // ONLY depends on stable values
 
-  // JWT-FIRST AUTHORIZATION CHECK
+  // ================================================================
+  // EFFECT 1: JWT-FIRST AUTHORIZATION CHECK (runs once per auth change)
+  // ================================================================
   useEffect(() => {
-    console.log('🔒 Running coach dashboard authorization check...', {
+    // Skip if already completed
+    if (authCheckComplete.current) {
+      console.log('⏭️ Auth check already complete, skipping')
+      return
+    }
+
+    console.log('🔒 Running authorization check...', {
       authLoading,
       user: !!user,
       isCoach,
       workspaceSlug,
-      urlSlug: slug,
-      'workspaceSlug === slug': workspaceSlug === slug,
-      'workspaceSlug type': typeof workspaceSlug,
-      'slug type': typeof slug
+      urlSlug: slug
     })
 
     if (authLoading) {
@@ -208,6 +234,7 @@ export default function CoachDashboard() {
     if (!slug) {
       console.log('❌ No slug in URL')
       setUnauthorized(true)
+      authCheckComplete.current = true
       return
     }
 
@@ -220,27 +247,31 @@ export default function CoachDashboard() {
 
     if (workspaceSlug === slug) {
       console.log('✅ Authorization passed - coach accessing their own workspace')
-      console.log('🔄 Setting loading to false and proceeding to load dashboard data')
-      setLoading(false) // Set loading to false immediately
-      // Proceed to load dashboard data
+      authCheckComplete.current = true
+      setLoading(false)
     } else if (!workspaceSlug) {
-      console.log('⏳ Waiting for workspaceSlug to be derived from JWT...')
-      console.log('Current workspaceSlug value:', workspaceSlug)
+      console.log('⏳ Waiting for workspaceSlug to load...')
       // Will re-run when workspaceSlug is set
       return
-    } else {
-      console.log('❓ Unexpected state:', { workspaceSlug, slug, 'equal': workspaceSlug === slug })
     }
 
-  }, [authLoading, user, isCoach, workspaceSlug, slug, router])
+    // NOTE: We do NOT include router in dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, isCoach, workspaceSlug, slug])
 
-  // Load dashboard data when authorization is complete
+  // ================================================================
+  // EFFECT 2: Load Dashboard Data (runs once after authorization)
+  // ================================================================
   useEffect(() => {
-    if (!authLoading && user && isCoach && workspaceSlug === slug) {
+    if (authCheckComplete.current && !dataFetched.current && user && isCoach && workspaceSlug === slug) {
       console.log('🚀 Authorization complete, loading dashboard data')
       fetchDashboardData()
     }
-  }, [authLoading, user, isCoach, workspaceSlug, slug, fetchDashboardData])
+  }, [authCheckComplete.current, user, isCoach, workspaceSlug, slug, fetchDashboardData])
+
+  // ================================================================
+  // LOADING & ERROR STATES
+  // ================================================================
 
   // Show loading while auth is being checked
   if (authLoading) {
@@ -287,36 +318,44 @@ export default function CoachDashboard() {
     )
   }
 
-    const formatDate = (dateString: string): string => {
-      try {
-        return new Date(dateString).toLocaleDateString('en-GB', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric'
-        })
-      } catch (error) {
-        return 'Invalid date'
-      }
+  // ================================================================
+  // HELPER FUNCTIONS
+  // ================================================================
+
+  const formatDate = (dateString: string): string => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      })
+    } catch (error) {
+      return 'Invalid date'
     }
-
-
-const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
-  switch (status) {
-    case 'accepted': return 'success'
-    case 'pending': return 'info'
-    case 'expired': 
-    case 'declined': return 'error'
-    case 'email_failed': return 'warning'
-    default: return 'default'
   }
-}
 
-const getStatusBadgeText = (status: string) => {
-  switch (status) {
-    case 'email_failed': return 'Email Failed'
-    default: return status.charAt(0).toUpperCase() + status.slice(1)
+  const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
+    switch (status) {
+      case 'accepted': return 'success'
+      case 'pending': return 'info'
+      case 'expired': 
+      case 'declined': return 'error'
+      case 'email_failed': return 'warning'
+      default: return 'default'
+    }
   }
-}
+
+  const getStatusBadgeText = (status: string) => {
+    switch (status) {
+      case 'email_failed': return 'Email Failed'
+      default: return status.charAt(0).toUpperCase() + status.slice(1)
+    }
+  }
+
+  // ================================================================
+  // RENDER
+  // ================================================================
+
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
@@ -335,6 +374,7 @@ const getStatusBadgeText = (status: string) => {
           </summary>
           <div className="mt-2 p-3 bg-gray-100 rounded text-xs font-mono">
             <pre>{JSON.stringify({
+              renderCount: renderCount.current,
               urlSlug: slug,
               workspaceSlug,
               firstName,
@@ -342,14 +382,15 @@ const getStatusBadgeText = (status: string) => {
               isCoach,
               role,
               hasUser: !!user,
-              hasCoachProfile: !!coachProfile
+              hasCoachProfile: !!coachProfile,
+              authCheckComplete: authCheckComplete.current,
+              dataFetched: dataFetched.current
             }, null, 2)}</pre>
           </div>
         </details>
       </div>
 
-      {/* Quick Stats - BEFORE: 4 repeated bg-white p-6 rounded-lg shadow divs */}
-      {/* Quick Stats - AFTER: Clean StatCard components */}
+      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
           icon="👥"
@@ -384,9 +425,8 @@ const getStatusBadgeText = (status: string) => {
         />
       </div>
 
-      {/* Action Buttons - BEFORE: bg-white rounded-lg shadow p-6 */}
-      {/* Action Buttons - AFTER: Clean Card component */}
-        <Card>
+      {/* Action Buttons */}
+      <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
@@ -414,8 +454,7 @@ const getStatusBadgeText = (status: string) => {
         </CardContent>
       </Card>
 
-      {/* Athletes Section - BEFORE: bg-white rounded-lg shadow */}
-      {/* Athletes Section - AFTER: Clean Card component */}
+      {/* Athletes Section */}
       <Card>
         <CardHeader>
           <button
@@ -423,49 +462,36 @@ const getStatusBadgeText = (status: string) => {
             className="flex items-center justify-between w-full text-left"
           >
             <CardTitle>Your Athletes ({athletes.length})</CardTitle>
-            {athletesSectionOpen ? (
-              <span className="text-cirfpro-gray-500">▲</span>
-            ) : (
-              <span className="text-cirfpro-gray-500">▼</span>
-            )}
+            {athletesSectionOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </button>
         </CardHeader>
-        
         {athletesSectionOpen && (
           <CardContent>
             {athletes.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-cirfpro-gray-500 mb-4">No athletes yet</p>
-                <button
-                  onClick={() => setIsInviteModalOpen(true)}
-                  className="bg-cirfpro-green-600 text-white px-4 py-2 rounded-lg hover:bg-cirfpro-green-700 transition-colors"
-                >
-                  Send Your First Invitation
-                </button>
+                <Text color="muted">No athletes yet. Invite athletes to get started!</Text>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {athletes.map((athlete) => (
                   <div
                     key={athlete.id}
-                    className="flex items-center justify-between p-4 bg-cirfpro-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <div>
-                      <p className="font-medium text-cirfpro-gray-900">
+                    <div className="flex-1">
+                      <Text className="font-medium">
                         {athlete.first_name} {athlete.last_name}
-                      </p>
-                      <p className="text-sm text-cirfpro-gray-600">{athlete.email}</p>
-                      <p className="text-xs text-cirfpro-gray-500 capitalize">
-                        {athlete.experience_level} level
-                        {athlete.goal_race_distance && ` • Goal: ${athlete.goal_race_distance}`}
-                      </p>
+                      </Text>
+                      <Caption color="muted">{athlete.email}</Caption>
                     </div>
-                    <Link
-                      href={`/coach/${slug}/athletes/${athlete.id}`}
-                      className="text-cirfpro-green-600 hover:text-cirfpro-green-700 font-medium"
-                    >
-                      View Profile →
-                    </Link>
+                    <div className="text-right">
+                      <Badge variant="info" className="mb-1">
+                        {athlete.experience_level}
+                      </Badge>
+                      {athlete.goal_race_distance && (
+                        <Caption color="muted">Goal: {athlete.goal_race_distance}</Caption>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -474,8 +500,7 @@ const getStatusBadgeText = (status: string) => {
         )}
       </Card>
 
-      {/* Recent Invitations Section - BEFORE: bg-white rounded-lg shadow */}
-      {/* Recent Invitations Section - AFTER: Clean Card component */}
+      {/* Recent Invitations */}
       <Card>
         <CardHeader>
           <button
@@ -483,60 +508,58 @@ const getStatusBadgeText = (status: string) => {
             className="flex items-center justify-between w-full text-left"
           >
             <CardTitle>Recent Invitations ({recentInvitations.length})</CardTitle>
-            {invitationsSectionOpen ? (
-              <span className="text-cirfpro-gray-500">▲</span>
-            ) : (
-              <span className="text-cirfpro-gray-500">▼</span>
-            )}
+            {invitationsSectionOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </button>
         </CardHeader>
-          {invitationsSectionOpen && (
+        {invitationsSectionOpen && (
           <CardContent>
             {recentInvitations.length === 0 ? (
-              <p className="text-cirfpro-gray-500 text-center py-4">No invitations sent yet</p>
+              <div className="text-center py-8">
+                <Text color="muted">No invitations sent yet.</Text>
+              </div>
             ) : (
               <div className="space-y-3">
                 {recentInvitations.map((invitation) => (
-                  <div key={invitation.id} className="flex items-center justify-between p-3 border border-cirfpro-gray-200 rounded-lg">
-                    <div>
-                      <p className="font-medium text-cirfpro-gray-900">{invitation.email}</p>
-                      <p className="text-sm text-cirfpro-gray-600">
-                        Sent: {invitation.sent_at ? formatDate(invitation.sent_at) : 'N/A'}
-                      </p>
+                  <div
+                    key={invitation.id}
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <Text className="font-medium">{invitation.email}</Text>
+                      <Caption color="muted">
+                        Sent {formatDate(invitation.sent_at || '')}
+                      </Caption>
                     </div>
-                    <Badge variant={getStatusBadgeVariant(invitation.status || 'pending')} size="sm">
-                      {getStatusBadgeText(invitation.status || 'pending')}
+                    <Badge variant={getStatusBadgeVariant(invitation.status || 'default')}>
+                      {getStatusBadgeText(invitation.status || 'unknown')}
                     </Badge>
                   </div>
                 ))}
               </div>
             )}
-            
-            {recentInvitations.length > 0 && (
-              <div className="mt-4 text-center">
-                <Link
-                  href={`/coach/${slug}/invitations`}
-                  className="text-cirfpro-green-600 hover:text-cirfpro-green-700 text-sm font-medium"
-                >
-                  View All Invitations →
-                </Link>
-              </div>
-            )}
+            <div className="mt-4">
+              <Link
+                href={`/coach/${slug}/invitations`}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                View all invitations →
+              </Link>
+            </div>
           </CardContent>
         )}
       </Card>
 
       {/* Invitation Modal */}
-      {isInviteModalOpen && (
-        <InvitationModal
-          isOpen={isInviteModalOpen}
-          onClose={() => setIsInviteModalOpen(false)}
-          onSuccess={() => {
-            setIsInviteModalOpen(false)
-            fetchDashboardData() // Refresh data
-          }}
-        />
-      )}
+      <InvitationModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        onSuccess={() => {
+          setIsInviteModalOpen(false)
+          // Reset data fetched flag to allow refetch
+          dataFetched.current = false
+          fetchDashboardData()
+        }}
+      />
     </div>
   )
 }

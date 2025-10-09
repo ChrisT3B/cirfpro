@@ -2,12 +2,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { UserPlus, LogIn, Mail, Award, Briefcase, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { UserPlus, LogIn, Mail, Award, Briefcase, MapPin, DollarSign, Clock, XCircle } from 'lucide-react'
 import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Text, Heading } from '@/components/ui/Typography'
+import { Text, Heading, Badge } from '@/components/ui/Typography'
 
 interface InvitationData {
   valid: boolean
@@ -81,14 +81,40 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     validateInvitation()
   }, [token])
 
+  // Handler for creating new account
+  const handleCreateAccount = () => {
+    if (!validationData) return
+    
+    console.log('🔘 Create Account button clicked')
+    console.log('📧 Email:', validationData.invitation.email)
+    console.log('🎫 Token:', token)
+    
+    sessionStorage.setItem('pendingInvitationToken', token)
+    router.push(`/auth/signup?email=${encodeURIComponent(validationData.invitation.email)}`)
+  }
+
+  // Handler for signing in existing users
+  const handleSignIn = () => {
+    if (!validationData) return
+    
+    console.log('🔘 Sign In button clicked')
+    console.log('📧 Email:', validationData.invitation.email)
+    console.log('🎫 Token:', token)
+    
+    sessionStorage.setItem('pendingInvitationToken', token)
+    router.push(`/auth/signin?email=${encodeURIComponent(validationData.invitation.email)}`)
+  }
+
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <Text color="muted">Loading invitation...</Text>
-        </div>
+      <div className="min-h-screen bg-cirfpro-gray-50 flex items-center justify-center p-4">
+        <Card variant="elevated" className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cirfpro-green-600 mx-auto mb-4" />
+            <Text color="muted">Loading invitation...</Text>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -96,136 +122,108 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   // Error state
   if (error || !validationData) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4">
-        <div className="max-w-md mx-auto">
-          <Card variant="elevated">
-            <CardContent className="p-8 text-center">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-                <XCircle className="h-8 w-8 text-red-600" />
-              </div>
-              <Heading level="h2" className="mb-2">Invalid Invitation</Heading>
-              <Text color="muted" className="mb-6">
-                {error || 'This invitation link is not valid or has expired.'}
-              </Text>
-              <Button variant="secondary" onClick={() => router.push('/')}>
-                Go to Home
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="min-h-screen bg-cirfpro-gray-50 flex items-center justify-center p-4">
+        <Card variant="elevated" className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+              <XCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <Heading level="h2" className="mb-2">Invalid Invitation</Heading>
+            <Text color="muted" className="mb-6">
+              {error || 'This invitation link is not valid or has expired.'}
+            </Text>
+            <Button 
+              variant="secondary" 
+              onClick={() => router.push('/')}
+            >
+              Return Home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
-  const { coach, invitation } = validationData
+  const { invitation, coach } = validationData
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="min-h-screen bg-cirfpro-gray-50 py-12 px-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* Header Section */}
         <div className="text-center mb-8">
           <Heading level="h1" className="mb-2">
-            Coaching Invitation
+            You're Invited to Train with a Professional Coach
           </Heading>
-          <Text size="lg" color="muted">
-            You've been invited to train with a CiRF certified coach
+          <Text color="muted" size="lg">
+            {coach.name} has invited you to join their coaching program
           </Text>
         </div>
 
         {/* Coach Profile Card */}
-        <Card variant="elevated" className="mb-6">
+        <Card variant="elevated">
           <CardContent className="p-8">
             {/* Coach Header */}
-            <div className="flex items-center space-x-4 mb-6">
-              {coach.photoUrl ? (
-                <Image
-                  src={coach.photoUrl}
-                  alt={coach.name}
-                  width={80}
-                  height={80}
-                  className="w-20 h-20 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-semibold text-green-600">
-                    {coach.name.charAt(0)}
-                  </span>
-                </div>
+            <div className="flex flex-col items-center mb-6">
+              {/* Avatar */}
+              <div className="relative w-24 h-24 rounded-full bg-cirfpro-gray-200 flex items-center justify-center overflow-hidden mb-4">
+                {coach.photoUrl ? (
+                  <Image
+                    src={coach.photoUrl}
+                    alt={coach.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <Briefcase className="h-10 w-10 text-cirfpro-gray-400" />
+                )}
+              </div>
+
+              {/* Coach Name & Email */}
+              <Heading level="h2" className="mb-1">
+                {coach.name}
+              </Heading>
+              
+              {coach.workspaceName && (
+                <Text color="brand" weight="medium" className="mb-2">
+                  {coach.workspaceName}
+                </Text>
               )}
-              <div>
-                <Heading level="h2">{coach.workspaceName || coach.name}</Heading>
-                <Text color="muted">{coach.email}</Text>
+              
+              <div className="flex items-center gap-2 text-cirfpro-gray-600">
+                <Mail className="h-4 w-4" />
+                <Text size="sm" color="muted">{coach.email}</Text>
               </div>
             </div>
 
             {/* Coach Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Experience */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {coach.yearsExperience && (
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <Award className="h-5 w-5 text-green-600" />
-                  </div>
+                <div className="flex items-center gap-2 p-3 bg-cirfpro-gray-50 rounded-lg">
+                  <Award className="h-5 w-5 text-cirfpro-green-600" />
                   <div>
-                    <Text size="sm" weight="semibold" className="text-gray-900">
-                      Experience
-                    </Text>
-                    <Text size="sm" color="muted">
-                      {coach.yearsExperience} years coaching
-                    </Text>
+                    <Text size="xs" color="muted" className="uppercase">Experience</Text>
+                    <Text weight="semibold">{coach.yearsExperience} years</Text>
                   </div>
                 </div>
               )}
 
-              {/* Location */}
               {coach.location && (
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <Mail className="h-5 w-5 text-green-600" />
-                  </div>
+                <div className="flex items-center gap-2 p-3 bg-cirfpro-gray-50 rounded-lg">
+                  <MapPin className="h-5 w-5 text-cirfpro-green-600" />
                   <div>
-                    <Text size="sm" weight="semibold" className="text-gray-900">
-                      Location
-                    </Text>
-                    <Text size="sm" color="muted">
-                      {coach.location}
-                    </Text>
+                    <Text size="xs" color="muted" className="uppercase">Location</Text>
+                    <Text weight="semibold">{coach.location}</Text>
                   </div>
                 </div>
               )}
 
-              {/* Availability */}
-              {coach.availabilityStatus && (
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <Text size="sm" weight="semibold" className="text-gray-900">
-                      Availability
-                    </Text>
-                    <Text size="sm" color="muted">
-                      {coach.availabilityStatus === 'available' && 'Accepting new athletes'}
-                      {coach.availabilityStatus === 'limited' && 'Limited availability'}
-                      {coach.availabilityStatus === 'unavailable' && 'Not accepting new athletes'}
-                    </Text>
-                  </div>
-                </div>
-              )}
-
-              {/* Price Range */}
               {coach.priceRange && (
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <Briefcase className="h-5 w-5 text-green-600" />
-                  </div>
+                <div className="flex items-center gap-2 p-3 bg-cirfpro-gray-50 rounded-lg">
+                  <DollarSign className="h-5 w-5 text-cirfpro-green-600" />
                   <div>
-                    <Text size="sm" weight="semibold" className="text-gray-900">
-                      Pricing
-                    </Text>
-                    <Text size="sm" color="muted">
-                      {coach.priceRange}
-                    </Text>
+                    <Text size="xs" color="muted" className="uppercase">Price Range</Text>
+                    <Text weight="semibold">{coach.priceRange}</Text>
                   </div>
                 </div>
               )}
@@ -237,12 +235,9 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 <Heading level="h3" className="mb-3">Qualifications</Heading>
                 <div className="flex flex-wrap gap-2">
                   {coach.qualifications.map((qual, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
-                    >
+                    <Badge key={index} variant="info" size="base">
                       {qual}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -254,12 +249,9 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 <Heading level="h3" className="mb-3">Specializations</Heading>
                 <div className="flex flex-wrap gap-2">
                   {coach.specializations.map((spec, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                    >
+                    <Badge key={index} variant="brand" size="base">
                       {spec}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -283,18 +275,23 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
             {/* Personal Message */}
             {invitation.message && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <Heading level="h3" className="mb-2">Personal Message</Heading>
-                <Text className="italic">"{invitation.message}"</Text>
-              </div>
+              <Card variant="accent" accentColor="green" className="mb-6">
+                <CardContent className="p-4">
+                  <Heading level="h3" className="mb-2">Personal Message</Heading>
+                  <Text className="italic">"{invitation.message}"</Text>
+                </CardContent>
+              </Card>
             )}
 
-            {/* Invitation Details */}
-            <div className="pt-4 border-t border-gray-200">
-              <div className="flex items-center justify-between text-sm">
-                <Text size="sm" color="muted">
-                  Sent: {new Date(invitation.sentAt).toLocaleDateString()}
-                </Text>
+            {/* Invitation Details Footer */}
+            <div className="pt-6 border-t border-cirfpro-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-cirfpro-gray-400" />
+                  <Text size="sm" color="muted">
+                    Sent: {new Date(invitation.sentAt).toLocaleDateString()}
+                  </Text>
+                </div>
                 <Text size="sm" color="muted">
                   Expires: {new Date(invitation.expiresAt).toLocaleDateString()}
                 </Text>
@@ -311,67 +308,55 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             </Heading>
             
             {validationData.userExists ? (
-              // User already has an account
+              // Existing user flow
               <div className="space-y-4">
                 <Text className="mb-6" color="muted">
                   You already have an account with us! Sign in to accept this invitation and start training with {coach.name}.
                 </Text>
+                
                 <Button
                   variant="primary"
                   size="lg"
-                  onClick={() => router.push(`/login?email=${encodeURIComponent(invitation.email)}&redirect=/invite/${token}`)}
+                  onClick={handleSignIn}
                   className="w-full"
                 >
                   <LogIn className="h-5 w-5 mr-2" />
                   Sign In to Accept Invitation
                 </Button>
+                
                 <Text size="sm" color="muted" className="mt-4">
-                  After signing in, you'll be redirected back to accept this invitation
+                  After signing in, you'll be able to accept this invitation
                 </Text>
               </div>
             ) : (
-              // New user - needs to create account
-              <div className="space-y-4">
-                <Text className="mb-6" color="muted">
-                  Create your account to accept this invitation and start your training journey with {coach.name}.
-                </Text>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={() => router.push(`/signup?email=${encodeURIComponent(invitation.email)}&inviteToken=${token}`)}
-                  className="w-full"
-                >
-                  <UserPlus className="h-5 w-5 mr-2" />
-                  Create Account & Accept Invitation
-                </Button>
-                
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">or</span>
-                  </div>
-                </div>
-                
-                <Text size="sm" color="muted">
-                  Already have an account?{' '}
-                  <button
-                    onClick={() => router.push(`/login?email=${encodeURIComponent(invitation.email)}&redirect=/invite/${token}`)}
-                    className="text-cirfpro-green-600 hover:text-cirfpro-green-700 font-medium underline"
-                  >
-                    Sign in here
-                  </button>
-                </Text>
-              </div>
-            )}
+
+          // New user flow
+          <div className="space-y-4">
+            <Text className="mb-6" color="muted">
+              Create your account to accept this invitation and start your training journey with {coach.name}.
+            </Text>
+            
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleCreateAccount}
+              className="w-full"
+            >
+              <UserPlus className="h-5 w-5 mr-2" />
+              Create Account & Accept
+            </Button>
+          </div>
+        )}
+
           </CardContent>
         </Card>
 
         {/* Footer Note */}
-        <Text size="sm" color="muted" align="center" className="mt-6">
-          By accepting this invitation, you agree to CIRFPRO's Terms of Service and Privacy Policy
-        </Text>
+        <div className="text-center pt-4">
+          <Text size="sm" color="muted">
+            By accepting this invitation, you agree to CIRFPRO's Terms of Service and Privacy Policy
+          </Text>
+        </div>
       </div>
     </div>
   )

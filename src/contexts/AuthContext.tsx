@@ -1,375 +1,309 @@
-// src/contexts/AuthContext.tsx - JWT-FIRST ARCHITECTURE
+// src/contexts/AuthContext.tsx - CORRECTED with all expected properties + LOADING STATE FIX
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { User as SupabaseUser } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase'
-import type { User, CoachProfile, AthleteProfile } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
+
+// Type definitions
+type User = Database['public']['Tables']['users']['Row']
+type CoachProfile = Database['public']['Tables']['coach_profiles']['Row']
+type AthleteProfile = Database['public']['Tables']['athlete_profiles']['Row']
 
 interface AuthContextType {
-  // Authentication State
   user: SupabaseUser | null
-  loading: boolean
-  
-  // INSTANT JWT-BASED DATA (no database calls required)
-  isCoach: boolean
-  isAthlete: boolean
-  workspaceSlug: string | null
-  firstName: string | null
-  lastName: string | null
-  role: 'coach' | 'athlete' | null
-  
-  // DETAILED PROFILE DATA (async loaded in background)
   profile: User | null
   coachProfile: CoachProfile | null
   athleteProfile: AthleteProfile | null
-  profilesLoading: boolean
   
-  // Auth Functions
-  signUp: (email: string, password: string, userData: { role: 'coach' | 'athlete', firstName: string, lastName: string }) => Promise<void>
-  signIn: (email: string, password: string) => Promise<void>
+  // Computed properties for easy access
+  isCoach: boolean
+  isAthlete: boolean
+  role: 'coach' | 'athlete' | null
+  
+  // JWT-extracted properties for instant access
+  firstName: string | null
+  lastName: string | null
+  workspaceSlug: string | null
+  
+  loading: boolean
+  roleProfileLoading: boolean  // ← NEW: Track when coach/athlete profile is loading
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
-  refreshProfiles: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Authentication State
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SupabaseUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  
-  // INSTANT JWT-BASED DATA (synchronously available)
-  const [isCoach, setIsCoach] = useState(false)
-  const [isAthlete, setIsAthlete] = useState(false)
-  const [workspaceSlug, setWorkspaceSlug] = useState<string | null>(null)
-  const [firstName, setFirstName] = useState<string | null>(null)
-  const [lastName, setLastName] = useState<string | null>(null)
-  const [role, setRole] = useState<'coach' | 'athlete' | null>(null)
-  
-  // DETAILED PROFILE DATA (async loaded)
   const [profile, setProfile] = useState<User | null>(null)
   const [coachProfile, setCoachProfile] = useState<CoachProfile | null>(null)
   const [athleteProfile, setAthleteProfile] = useState<AthleteProfile | null>(null)
-  const [profilesLoading, setProfilesLoading] = useState(false)
-
+  const [loading, setLoading] = useState(true)
+  const [profileLoaded, setProfileLoaded] = useState(false)
+  const [roleProfileLoading, setRoleProfileLoading] = useState(false)  // ← NEW
+  
   const supabase = createClient()
+  const router = useRouter()
 
-  // Generate workspace slug from name (same logic as database function)
-  const generateWorkspaceSlug = useCallback((firstName: string, lastName: string) => {
-    if (!firstName || !lastName) return null
-    
-    // Convert to lowercase and replace spaces/special chars with hyphens
-    const slug = `${firstName}-${lastName}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric with hyphens
-      .replace(/^-+|-+$/g, '')      // Remove leading/trailing hyphens
-      .replace(/-+/g, '-')          // Replace multiple hyphens with single
-    
-    return slug
-  }, [])
-
-  // Extract essential user data from JWT token - INSTANT DATA
-  const extractJWTData = useCallback((user: SupabaseUser) => {
-    console.log('🚀 Extracting JWT data for instant authorization')
-    
-    // Extract role from user metadata or app_metadata
-    const userRole = user.user_metadata?.role || user.app_metadata?.role || null
-    
-    // Extract name data from user metadata
-    const userFirstName = user.user_metadata?.first_name || user.app_metadata?.first_name || null
-    const userLastName = user.user_metadata?.last_name || user.app_metadata?.last_name || null
-    
-    // Generate workspace slug directly from name (NO DATABASE CALL!)
-    const derivedWorkspaceSlug = (userRole === 'coach' && userFirstName && userLastName) 
-      ? generateWorkspaceSlug(userFirstName, userLastName)
-      : null
-    
-    // Set instant JWT-based data (synchronous)
-    setRole(userRole)
-    setIsCoach(userRole === 'coach')
-    setIsAthlete(userRole === 'athlete')
-    setFirstName(userFirstName)
-    setLastName(userLastName)
-    setWorkspaceSlug(derivedWorkspaceSlug)
-    
-    console.log('✅ JWT Data extracted instantly:', {
-      role: userRole,
-      isCoach: userRole === 'coach',
-      isAthlete: userRole === 'athlete',
-      firstName: userFirstName,
-      lastName: userLastName,
-      workspaceSlug: derivedWorkspaceSlug
-    })
-    
-    return {
-      role: userRole,
-      isCoach: userRole === 'coach',
-      isAthlete: userRole === 'athlete',
-      firstName: userFirstName,
-      lastName: userLastName,
-      workspaceSlug: derivedWorkspaceSlug
+  // Initialize auth state
+  useEffect(() => {
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [generateWorkspaceSlug])
 
-  // Load detailed profiles in background (non-blocking)
-  const loadDetailedProfiles = useCallback(async (userId: string, userRole: string) => {
-    if (!userRole) return
-    
-    console.log('🔄 Loading detailed profiles in background...')
-    setProfilesLoading(true)
+    getInitialSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔐 Auth state change:', event)
+        
+        if (session?.user) {
+          setUser(session.user)
+          // Reset profile loaded flag when user changes
+          setProfileLoaded(false)
+        } else {
+          // User signed out - clear everything
+          setUser(null)
+          setProfile(null)
+          setCoachProfile(null)
+          setAthleteProfile(null)
+          setProfileLoaded(false)
+          setRoleProfileLoading(false)  // ← NEW
+        }
+        
+        setLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
+  // Load profile: JWT-FIRST STRATEGY with database fallback
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user || profileLoaded) return
+
+      console.log('🔍 Loading user profile for:', user.email)
+
+      try {
+        // ================================================================
+        // STRATEGY 1: Try JWT first (FAST - 0ms)
+        // ================================================================
+        const jwtMetadata = user.user_metadata
+        
+        if (jwtMetadata?.role && jwtMetadata?.first_name && jwtMetadata?.last_name) {
+          console.log('✅ Using JWT metadata (fast path - 0ms)')
+          
+          const profileFromJWT: User = {
+            id: user.id,
+            email: user.email!,
+            role: jwtMetadata.role as 'coach' | 'athlete',
+            first_name: jwtMetadata.first_name,
+            last_name: jwtMetadata.last_name,
+            created_at: user.created_at,
+            updated_at: new Date().toISOString()
+          }
+
+          setProfile(profileFromJWT)
+          setProfileLoaded(true)
+          
+          // Load role-specific profile in background (non-blocking)
+          loadRoleSpecificProfile(profileFromJWT.role, user.id)
+          
+          return // ← EARLY EXIT - No database call needed!
+        }
+
+        // ================================================================
+        // STRATEGY 2: Fallback to database (SLOW - ~50ms one-time)
+        // ================================================================
+        console.log('⚠️  JWT metadata missing, fetching from database (fallback)')
+        
+        const { data: userProfile, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (error) {
+          console.error('❌ Failed to fetch user profile:', error)
+          
+          // Check if user is in pending_users (email not verified yet)
+          const { data: pendingUser } = await supabase
+            .from('pending_users')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+          
+          if (pendingUser) {
+            console.log('⏳ User in pending_users - email verification required')
+          }
+          
+          return
+        }
+
+        if (userProfile) {
+          console.log('✅ Loaded profile from database')
+          setProfile(userProfile)
+          setProfileLoaded(true)
+
+          // ================================================================
+          // REPAIR: Update JWT metadata for future fast loading
+          // ================================================================
+          console.log('🔧 Updating JWT metadata for future sessions...')
+          try {
+            await supabase.auth.updateUser({
+              data: {
+                role: userProfile.role,
+                first_name: userProfile.first_name,
+                last_name: userProfile.last_name
+              }
+            })
+            console.log('✅ JWT metadata repaired - future logins will be instant')
+          } catch (updateError) {
+            console.warn('⚠️  Could not update JWT metadata:', updateError)
+            // Non-fatal - user can still use the app
+          }
+
+          // Load role-specific profile
+          loadRoleSpecificProfile(userProfile.role, user.id)
+        }
+      } catch (err) {
+        console.error('❌ Error loading profile:', err)
+      }
+    }
+
+    loadProfile()
+  }, [user, profileLoaded, supabase])
+
+  // Helper: Load coach/athlete specific data
+  const loadRoleSpecificProfile = useCallback(async (
+    role: 'coach' | 'athlete',
+    userId: string
+  ) => {
+    setRoleProfileLoading(true)  // ← NEW: Set loading state
     
     try {
-      // Load base user profile
-      const { data: userProfile, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (userError) {
-        console.error('Error loading user profile:', userError)
-      } else {
-        setProfile(userProfile as User)
-      }
-
-      // Load role-specific profile
-      if (userRole === 'coach') {
-        const { data: _coachData, error: coachError } = await supabase
+      console.log(`🔄 Loading ${role} profile for user ${userId}...`)
+      
+      if (role === 'coach') {
+        // Only load if not already loaded
+        if (coachProfile?.user_id === userId) {
+          console.log('✅ Coach profile already loaded')
+          return
+        }
+        
+        const { data, error } = await supabase
           .from('coach_profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
-
-        if (coachError) {
-          console.error('Error loading coach profile:', coachError)
+        
+        if (data && !error) {
+          setCoachProfile(data)
+          console.log('✅ Coach profile loaded, workspace_slug:', data.workspace_slug)
+        } else if (error?.code !== 'PGRST116') {
+          // PGRST116 = not found, which is expected for new users
+          console.error('Error loading coach profile:', error)
         } else {
-          setCoachProfile(_coachData as CoachProfile)
+          console.log('⚠️  Coach profile not found (may be new user)')
         }
-      } else if (userRole === 'athlete') {
-        const { data: _athleteData, error: athleteError } = await supabase
+      } else if (role === 'athlete') {
+        // Only load if not already loaded
+        if (athleteProfile?.user_id === userId) {
+          console.log('✅ Athlete profile already loaded')
+          return
+        }
+        
+        const { data, error } = await supabase
           .from('athlete_profiles')
           .select('*')
           .eq('user_id', userId)
           .single()
-
-        if (athleteError) {
-          console.error('Error loading athlete profile:', athleteError)
+        
+        if (data && !error) {
+          setAthleteProfile(data)
+          console.log('✅ Athlete profile loaded')
+        } else if (error?.code !== 'PGRST116') {
+          console.error('Error loading athlete profile:', error)
         } else {
-          setAthleteProfile(_athleteData as AthleteProfile)
+          console.log('⚠️  Athlete profile not found (may be new user)')
         }
       }
-      
-      console.log('✅ Detailed profiles loaded successfully')
     } catch (error) {
-      console.error('Error loading detailed profiles:', error)
+      console.error(`❌ Error loading ${role} profile:`, error)
     } finally {
-      setProfilesLoading(false)
+      setRoleProfileLoading(false)  // ← NEW: Clear loading state
     }
-  }, [supabase])
+  }, [supabase, coachProfile, athleteProfile])
 
-  // Clear all auth state
-  const clearAuthState = useCallback(() => {
-    setUser(null)
-    setRole(null)
-    setIsCoach(false)
-    setIsAthlete(false)
-    setWorkspaceSlug(null)
-    setFirstName(null)
-    setLastName(null)
-    setProfile(null)
-    setCoachProfile(null)
-    setAthleteProfile(null)
-    setProfilesLoading(false)
-  }, [])
-
-  useEffect(() => {
-    let mounted = true
-
-    const initializeAuth = async () => {
-      try {
-        console.log('🔍 Initializing authentication...')
-        
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('❌ Error getting session:', error)
-          if (mounted) {
-            setLoading(false)
-          }
-          return
-        }
-
-        if (mounted && session?.user) {
-          console.log('✅ Session found - processing JWT data')
-          setUser(session.user)
-          
-          // Extract JWT data instantly (synchronous) - includes derived workspace_slug
-          const jwtData = extractJWTData(session.user)
-          
-          // Load detailed profiles in background (non-blocking)
-          if (jwtData.role) {
-            loadDetailedProfiles(session.user.id, jwtData.role)
-          }
-          
-          setLoading(false) // User can navigate immediately with all essential data
-        } else {
-          console.log('ℹ️ No session found')
-          if (mounted) {
-            setLoading(false)
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error initializing auth:', error)
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    initializeAuth()
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state changed:', event)
-      
-      if (!mounted) return
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('✅ User signed in - extracting JWT data')
-        setUser(session.user)
-        
-        // Extract JWT data instantly (includes derived workspace_slug)
-        const jwtData = extractJWTData(session.user)
-        
-        // Load detailed profiles in background
-        if (jwtData.role) {
-          loadDetailedProfiles(session.user.id, jwtData.role)
-        }
-        
-        setLoading(false)
-      } else if (event === 'SIGNED_OUT') {
-        console.log('🚪 User signed out')
-        clearAuthState()
-        setLoading(false)
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        console.log('🔄 Token refreshed - updating JWT data')
-        setUser(session.user)
-        extractJWTData(session.user)
-      }
-    })
-
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [supabase, extractJWTData, loadDetailedProfiles, clearAuthState])
-
-  const signUp = async (email: string, password: string, userData: { role: 'coach' | 'athlete', firstName: string, lastName: string }) => {
-    setLoading(true)
-    try {
-      console.log('📝 Starting sign up process...')
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            role: userData.role,
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-          }
-        }
-      })
-
-      if (error) {
-        console.error('❌ Sign up error:', error)
-        throw error
-      }
-
-      console.log('✅ Sign up successful')
-    } catch (error) {
-      console.error('❌ Error in sign up:', error)
-      throw error
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Sign in function
   const signIn = async (email: string, password: string) => {
-    setLoading(true)
     try {
-      console.log('🔑 Starting sign in process...')
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       })
 
-      if (error) {
-        console.error('❌ Sign in error:', error)
-        throw error
-      }
-
-      console.log('✅ Sign in successful - JWT data will be extracted automatically')
-    } catch (error) {
-      console.error('❌ Error in sign in:', error)
-      throw error
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const signOut = async () => {
-    setLoading(true)
-    try {
-      const { error } = await supabase.auth.signOut()
       if (error) throw error
+
+      return { error: null }
     } catch (error) {
-      console.error('❌ Error signing out:', error)
-      throw error
-    } finally {
-      setLoading(false)
+      return { error: error as Error }
     }
   }
 
-  const refreshProfiles = async () => {
-    if (!user || !role) return
-    await loadDetailedProfiles(user.id, role)
+  // Sign out function
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      setProfile(null)
+      setCoachProfile(null)
+      setAthleteProfile(null)
+      setProfileLoaded(false)
+      setRoleProfileLoading(false)  // ← NEW
+      router.push('/auth/signin')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
   }
 
-  const value = {
-    // Authentication State
+  // Computed properties extracted from JWT or profile
+  const role = profile?.role || (user?.user_metadata?.role as 'coach' | 'athlete' | null) || null
+  const isCoach = role === 'coach'
+  const isAthlete = role === 'athlete'
+  const firstName = profile?.first_name || user?.user_metadata?.first_name || null
+  const lastName = profile?.last_name || user?.user_metadata?.last_name || null
+  const workspaceSlug = coachProfile?.workspace_slug || null
+
+  const value: AuthContextType = {
     user,
-    loading,
-    
-    // INSTANT JWT-BASED DATA (available immediately)
-    isCoach,
-    isAthlete,
-    workspaceSlug,
-    firstName,
-    lastName,
-    role,
-    
-    // DETAILED PROFILE DATA (loaded asynchronously)
     profile,
     coachProfile,
     athleteProfile,
-    profilesLoading,
-    
-    // Functions
-    signUp,
+    isCoach,
+    isAthlete,
+    role,
+    firstName,
+    lastName,
+    workspaceSlug,
+    loading,
+    roleProfileLoading,  // ← NEW: Expose loading state
     signIn,
-    signOut,
-    refreshProfiles,
+    signOut
   }
 
   return (
@@ -377,4 +311,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }

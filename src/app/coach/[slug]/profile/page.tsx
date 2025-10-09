@@ -82,8 +82,8 @@ export default function CoachProfilePage() {
     )
   }
 
-  const displayName = coachProfile.workspace_name || 
-                     `${coachProfile.first_name} ${coachProfile.last_name}`
+const coachName = `${coachProfile.first_name ?? ''} ${coachProfile.last_name ?? ''}`.trim()
+const workspaceName = coachProfile.workspace_name ?? ''
 
   return (
     <div className="space-y-6">
@@ -96,7 +96,7 @@ export default function CoachProfilePage() {
               {coachProfile.profile_photo_url ? (
             <Image
             src={coachProfile.profile_photo_url}
-            alt={displayName}
+            alt={coachName}
             width={96}
             height={96}
             className="w-24 h-24 rounded-full object-cover"
@@ -104,19 +104,24 @@ export default function CoachProfilePage() {
               ) : (
                 <div className="w-24 h-24 bg-[#29b643] bg-opacity-10 rounded-full flex items-center justify-center">
                   <span className="text-2xl font-semibold text-[#29b643]">
-                    const displayName = coachProfile.workspace_name || 
-                   `${coachProfile.first_name || ''} ${coachProfile.last_name || ''}`.trim() ||
-                   'Coach'
-                  </span>
+                    {workspaceName}
+                   </span>
                 </div>
               )}
             </div>
 
             {/* Basic Info */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-3xl font-bold text-[#5a5e64] mb-2">
-                {displayName}
-              </h1>
+          <div className="flex-1 min-w-0">
+            {/* Workspace Name */}
+  {workspaceName && (
+    <div className="text-lg font-semibold text-[#29b643] mb-1">
+      {workspaceName}
+    </div>
+  )}
+            {/* Coach Name */}
+            <h1 className="text-3xl font-bold text-[#5a5e64] mb-2">
+              {coachName}
+            </h1>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-[#8b9198]">
                 {coachProfile.years_experience && (

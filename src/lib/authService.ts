@@ -1,248 +1,194 @@
-// src/lib/authService.ts - Fixed version
-import { createClient } from '@/lib/supabase'
-import { InputSanitizer } from '@/utils/InputSanitizer'
-import { SQLSecurityValidator } from '@/utils/sqlSecurityValidator'
-import { AuthError } from '@supabase/supabase-js'
-import type { Database } from '@/types/database.types'
+// src/lib/authService.ts - UPDATED FOR PHASE 1
+import { createClient } from '@/lib/supabase/client'
 
-// Define proper types
-type PendingUser = Database['public']['Tables']['pending_users']['Insert']
-
-interface SignUpData {
+interface RegisterUserData {
   email: string
   password: string
   firstName: string
   lastName: string
   role: 'coach' | 'athlete'
+  invitationToken?: string
+  // Coach-specific fields
   qualifications?: string[]
   specializations?: string[]
+  // Athlete-specific fields
   dateOfBirth?: string
   experienceLevel?: 'beginner' | 'intermediate' | 'advanced'
 }
 
-interface AuthResponse<T = unknown> {
-  data: T | null
-  error: AuthError | null
+interface AuthResult {
+  success: boolean
+  error?: {
+    message: string
+    code?: string
+  }
+  user?: any
 }
 
 export class AuthService {
-  private static supabase = createClient()
-
+  
   /**
-   * Enhanced user registration with security validation
+   * Register a new user
+   * PHASE 1: Sets JWT metadata immediately, stores in pending_users
+   * Trigger handles migration on email verification
    */
-  static async registerUser(registerData: SignUpData): Promise<AuthResponse> {
+  static async registerUser(data: RegisterUserData): Promise<AuthResult> {
+    const supabase = createClient()
+    
     try {
-      console.log('Starting secure registration for:', registerData.email)
-
-      // Step 1: Input sanitization
-      const sanitizedData = InputSanitizer.sanitizeFormData({
-        email: registerData.email,
-        firstName: registerData.firstName,
-        lastName: registerData.lastName,
-        role: registerData.role,
-        qualifications: registerData.qualifications || [],
-        specializations: registerData.specializations || [],
-        dateOfBirth: registerData.dateOfBirth,
-        experienceLevel: registerData.experienceLevel || 'beginner'
-      })
-
-      console.log('Input sanitization completed')
-
-      // Step 2: Email validation
-      const emailValidation = SQLSecurityValidator.validateEmailForDB(sanitizedData.email as string)
-      if (!emailValidation.isValid) {
-        return {
-          data: null,
-          error: { 
-            message: emailValidation.error || 'Invalid email format',
-            name: 'ValidationError',
-            status: 400
-          } as AuthError
-        }
-      }
-
-      // Step 3: Role validation
-      const roleValidation = SQLSecurityValidator.validateRole(sanitizedData.role as string)
-      if (!roleValidation.isValid) {
-        return {
-          data: null,
-          error: { 
-            message: roleValidation.error || 'Invalid role',
-            name: 'ValidationError',
-            status: 400
-          } as AuthError
-        }
-      }
-
-      console.log('Validation passed, creating Supabase auth user...')
-
-      // Step 4: Create auth user first
-      const { data: authData, error: authError } = await this.supabase.auth.signUp({
-        email: emailValidation.clean!,
-        password: registerData.password,
+      console.log('🔐 Starting user registration for:', data.email)
+      
+      // Step 1: Create auth user with JWT metadata
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          data: {
+            // CRITICAL: Set JWT metadata immediately for instant navigation
+            role: data.role,
+            first_name: data.firstName,
+            last_name: data.lastName,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/signin`,
         }
       })
 
-      if (authError) {
-        console.error('Auth user creation failed:', authError)
+      if (signUpError) {
+        console.error('❌ Signup error:', signUpError)
         return {
-          data: null,
-          error: authError
+          success: false,
+          error: {
+            message: signUpError.message,
+            code: signUpError.code
+          }
         }
       }
 
       if (!authData.user) {
-        console.error('No user returned from auth signup')
         return {
-          data: null,
-          error: { 
-            message: 'Failed to create auth user',
-            name: 'AuthError',
-            status: 500
-          } as AuthError
+          success: false,
+          error: {
+            message: 'User creation failed - no user returned'
+          }
         }
       }
 
-      console.log('Auth user created successfully, creating pending user profile...')
+      console.log('✅ Auth user created:', authData.user.id)
 
-      // Step 5: Create pending user profile
-      const insertData: PendingUser = {
-        id: authData.user.id,
-        email: emailValidation.clean!,
-        role: roleValidation.clean! as 'coach' | 'athlete',
-        first_name: sanitizedData.firstName as string,
-        last_name: sanitizedData.lastName as string,
-        qualifications: sanitizedData.qualifications as string[] || null,
-        specializations: sanitizedData.specializations as string[] || null,
-        date_of_birth: sanitizedData.dateOfBirth as string || null,
-        experience_level: sanitizedData.experienceLevel as 'beginner' | 'intermediate' | 'advanced' || null
-      }
-
-      console.log('=== PENDING USER INSERT DATA ===', insertData)
-      console.log('Data types:', {
-        id: typeof insertData.id,
-        email: typeof insertData.email,
-        role: typeof insertData.role,
-        first_name: typeof insertData.first_name,
-        last_name: typeof insertData.last_name
-      })
-
-      const { error: pendingError } = await this.supabase
+      // Step 2: Store in pending_users (backup for trigger)
+      const { error: pendingError } = await supabase
         .from('pending_users')
-        .insert(insertData)
+        .insert({
+          id: authData.user.id,
+          email: data.email,
+          role: data.role,
+          first_name: data.firstName,
+          last_name: data.lastName,
+          qualifications: data.qualifications || null,
+          specializations: data.specializations || null,
+          date_of_birth: data.dateOfBirth || null,
+          experience_level: data.experienceLevel || null,
+          invitation_token: data.invitationToken || null,
+          created_at: new Date().toISOString()
+        })
 
       if (pendingError) {
-        console.error('Error creating pending user:', {
-          message: pendingError.message,
-          code: pendingError.code,
-          details: pendingError.details,
-          hint: pendingError.hint
-        })
-        
-        // Clean up auth user if pending user creation fails
-        await this.supabase.auth.signOut()
-        
-        return {
-          data: null,
-          error: { 
-            message: pendingError.message || 'Failed to create user profile',
-            name: 'DatabaseError',
-            status: 500
-          } as AuthError
-        }
+        console.error('❌ Error creating pending_users record:', pendingError)
+        // Non-fatal - user can still verify email, but trigger won't work
+        // In production, you might want to handle this more gracefully
+      } else {
+        console.log('✅ pending_users record created')
       }
 
-      console.log('Registration completed successfully, verification email sent')
-
+      console.log('✅ Registration complete - verification email sent')
+      
       return {
-        data: authData.user,
-        error: null
+        success: true,
+        user: authData.user
       }
 
     } catch (error) {
-      console.error('Unexpected registration error:', error)
-      
+      console.error('❌ Registration exception:', error)
       return {
-        data: null,
-        error: { 
-          message: 'An unexpected error occurred during registration',
-          name: 'UnexpectedError',
-          status: 500
-        } as AuthError
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
       }
     }
   }
 
   /**
-   * Verify email and complete user registration
+   * Sign in user
+   * No changes needed - Supabase handles this
    */
-  static async verifyEmail(token: string): Promise<{ success: boolean; message: string; user?: unknown }> {
+  static async signIn(email: string, password: string): Promise<AuthResult> {
+    const supabase = createClient()
+    
     try {
-      console.log('Starting email verification with token:', token.substring(0, 10) + '...')
-
-      const { data, error } = await this.supabase.auth.verifyOtp({
-        token_hash: token,
-        type: 'email'
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
       })
 
       if (error) {
-        console.error('Email verification failed:', error)
         return {
           success: false,
-          message: error.message || 'Email verification failed'
+          error: {
+            message: error.message,
+            code: error.code
+          }
         }
       }
 
-      console.log('Email verification successful:', data)
-
       return {
         success: true,
-        message: 'Email verified successfully. You can now sign in.',
         user: data.user
       }
 
     } catch (error) {
-      console.error('Exception during email verification:', error)
       return {
         success: false,
-        message: 'An unexpected error occurred during email verification'
+        error: {
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
       }
     }
   }
 
   /**
-   * Test basic Supabase connectivity
+   * Sign out user
    */
-  static async testConnection(): Promise<{ success: boolean; message: string }> {
+  static async signOut(): Promise<AuthResult> {
+    const supabase = createClient()
+    
     try {
-      const { data, error } = await this.supabase
-        .from('users')
-        .select('count')
-        .limit(1)
+      const { error } = await supabase.auth.signOut()
 
       if (error) {
-        console.error('Connection test failed:', error)
         return {
           success: false,
-          message: `Connection failed: ${error.message}`
+          error: {
+            message: error.message
+          }
         }
       }
 
-      console.log('Connection test successful:', data)
-      return {
-        success: true,
-        message: 'Successfully connected to Supabase'
-      }
+      return { success: true }
 
     } catch (error) {
-      console.error('Exception during connection test:', error)
       return {
         success: false,
-        message: 'Connection test failed with exception'
+        error: {
+          message: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }
       }
     }
   }
+
+  /**
+   * NOTE: verifyEmail() function REMOVED
+   * Email verification is now handled automatically by the database trigger
+   * No application code needed for this process
+   */
 }

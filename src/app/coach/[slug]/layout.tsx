@@ -1,8 +1,8 @@
-// src/app/coach/[slug]/layout.tsx - JWT-FIRST ARCHITECTURE
+// src/app/coach/[slug]/layout.tsx - OPTIMIZED (NO RE-RENDERS)
 'use client'
 
 import { createClient } from '@/lib/supabase'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -35,6 +35,15 @@ interface CoachLayoutProps {
 }
 
 export default function CoachLayout({ children }: CoachLayoutProps) {
+  // Track render count
+  const renderCount = useRef(0)
+  renderCount.current++
+  
+  // Only log every other render (Strict Mode doubles renders in dev)
+  if (renderCount.current % 2 === 1) {
+    console.log(`🏗️ Coach Layout render #${Math.ceil(renderCount.current / 2)}`)
+  }
+  
   const { 
     user, 
     loading: authLoading,
@@ -53,100 +62,90 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
   const [coachData, setCoachData] = useState<CoachData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  console.log('🏗️ Coach Layout loading - JWT-FIRST', {
-    authLoading,
-    user: !!user,
-    isCoach,
-    workspaceSlug,
-    urlSlug: slug,
-    firstName,
-    lastName,
-    role
-  })
+  
+  // Track if data has been fetched
+  const dataFetched = useRef(false)
 
   // JWT-FIRST OWNERSHIP CHECK (instant, no database required for basic auth)
   const isOwner = user && isCoach && workspaceSlug === slug
-  
-  console.log('🔒 Layout ownership check:', {
-    isOwner,
-    userEmail: user?.email,
-    isCoach,
-    workspaceSlug,
-    urlSlug: slug,
-    'workspaceSlug === slug': workspaceSlug === slug
-  })
 
-  useEffect(() => {
-    async function fetchCoachData() {
-      try {
-        console.log('📊 Fetching coach display data for layout...')
-        const supabase = createClient()
+  // ================================================================
+  // MEMOIZED FUNCTION: Fetch Coach Data
+  // ================================================================
+  const fetchCoachData = useCallback(async () => {
+    // Prevent duplicate fetches
+    if (dataFetched.current) {
+      console.log('⏭️ Layout data already fetched, skipping')
+      return
+    }
+
+    dataFetched.current = true
+    
+    try {
+      console.log('📊 Fetching coach display data for layout...')
+      const supabase = createClient()
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Database query timeout')), 10000)
+      })
+
+      const queryPromise = supabase
+        .from('public_coach_directory')
+        .select('*')
+        .eq('workspace_slug', slug)
+        .single()
+
+      console.log('🔍 Executing database query with timeout...')
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise])
+
+      console.log('📋 Database query completed:', { hasData: !!data, hasError: !!error })
+
+      if (error) {
+        console.error('❌ Error fetching coach data:', error)
         
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Database query timeout')), 10000) // 10 second timeout
-        })
-
-        const queryPromise = supabase
-          .from('public_coach_directory')
-          .select('*')
-          .eq('workspace_slug', slug)
-          .single()
-
-        console.log('🔍 Executing database query with timeout...')
-        const { data, error } = await Promise.race([queryPromise, timeoutPromise])
-
-        console.log('📋 Database query completed:', { data, error, hasData: !!data })
-
-        if (error) {
-          console.error('❌ Error fetching coach data:', error)
-          console.error('Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          })
-          
-          if (error.code === 'PGRST116') {
-            setError('Coach not found')
-          } else {
-            setError('Failed to load coach profile')
-          }
-          return
-        }
-
-        console.log('✅ Coach display data loaded successfully:', {
-          workspace_slug: data?.workspace_slug,
-          first_name: data?.first_name,
-          last_name: data?.last_name,
-          email: data?.email
-        })
-        setCoachData(data)
-        
-      } catch (err) {
-        console.error('❌ Exception in fetchCoachData:', err)
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-        if (errorMessage === 'Database query timeout') {
-          setError('Database query timed out - please try again')
+        if (error.code === 'PGRST116') {
+          setError('Coach not found')
         } else {
           setError('Failed to load coach profile')
         }
-      } finally {
-        console.log('🏁 Setting loading to false')
         setLoading(false)
+        return
       }
-    }
 
-    if (slug && !authLoading) {
+      console.log('✅ Coach display data loaded successfully')
+      
+      // Batch state updates
+      setCoachData(data)
+      setError(null)
+      setLoading(false)
+      
+    } catch (err) {
+      console.error('❌ Exception in fetchCoachData:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      
+      if (errorMessage === 'Database query timeout') {
+        setError('Database query timed out - please try again')
+      } else {
+        setError('Failed to load coach profile')
+      }
+      
+      setLoading(false)
+    }
+  }, [slug]) // Only depends on slug
+
+  // ================================================================
+  // EFFECT: Fetch coach data once when ready
+  // ================================================================
+  useEffect(() => {
+    if (slug && !authLoading && !dataFetched.current) {
       console.log('🚀 Starting fetchCoachData for slug:', slug)
       fetchCoachData()
     }
-  }, [slug, authLoading])
+  }, [slug, authLoading, fetchCoachData])
 
   // Show loading while auth is being initialized
   if (authLoading) {
-    console.log('⏳ Layout showing auth loading')
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Loading authentication...</div>
@@ -154,9 +153,8 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
     )
   }
 
-  // Show loading while fetching coach display data (only for a short time)
+  // Show loading while fetching coach display data
   if (loading) {
-    console.log('⏳ Layout showing coach data loading')
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Loading coach workspace...</div>
@@ -166,7 +164,6 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
 
   // If database query failed but we have JWT data, continue with fallback
   if ((error || !coachData) && !(firstName && lastName)) {
-    console.log('❌ Layout showing error (no JWT fallback):', error)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -183,23 +180,12 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
     )
   }
 
-  // If we reach here, either we have coachData OR we have JWT fallback data
-  console.log('🎯 Layout proceeding with available data:', {
-    hasCoachData: !!coachData,
-    hasJWTFallback: !!(firstName && lastName),
-    error: error
-  })
-
   // Use JWT data for display when database times out
-  const displayName = coachData?.workspace_name || 
-                     (firstName && lastName ? `${firstName} ${lastName}` : 'Coach')
+  const coachName = coachData
+    ? `${coachData.first_name ?? ''} ${coachData.last_name ?? ''}`.trim()
+    : (firstName && lastName ? `${firstName} ${lastName}` : 'Coach')
 
-  console.log('✅ Layout ready to render with data:', {
-    displayName,
-    isOwner,
-    hasCoachData: !!coachData,
-    usingJWTFallback: !coachData && firstName && lastName
-  })
+  const workspaceName = coachData?.workspace_name ?? ''
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -213,7 +199,7 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
               {coachData?.profile_photo_url && (
                 <Image
                   src={coachData.profile_photo_url}
-                  alt={displayName}
+                  alt={coachName}
                   width={40}
                   height={40}
                   className="w-10 h-10 rounded-full object-cover"
@@ -221,7 +207,7 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
               )}
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">
-                  {displayName}
+                  {workspaceName}
                 </h1>
                 <p className="text-sm text-gray-500">Running Coach</p>
                 {/* Show fallback indicator if using JWT data */}
@@ -334,12 +320,14 @@ export default function CoachLayout({ children }: CoachLayoutProps) {
           <details>
             <summary className="cursor-pointer">🔧 Layout Debug</summary>
             <div className="mt-2 space-y-1">
+              <div>Render Count: {Math.ceil(renderCount.current / 2)}</div>
               <div>URL Slug: {slug}</div>
               <div>User: {user?.email || 'None'}</div>
               <div>Is Coach: {isCoach ? 'Yes' : 'No'}</div>
               <div>Workspace Slug: {workspaceSlug || 'None'}</div>
               <div>Is Owner: {isOwner ? 'Yes' : 'No'}</div>
               <div>Coach Data: {coachData ? 'Loaded' : 'None'}</div>
+              <div>Data Fetched: {dataFetched.current ? 'Yes' : 'No'}</div>
             </div>
           </details>
         </div>
