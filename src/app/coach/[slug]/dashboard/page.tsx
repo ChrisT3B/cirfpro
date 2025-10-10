@@ -13,6 +13,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import { Heading, Text, Caption, Badge } from '@/components/ui/Typography'
 import ProfileCompletionBar from '@/components/ProfileCompletionBar'
+import OnboardingNotificationBanner from '@/components/coach/OnboardingNotificationBanner'
+import { RelationshipQueries } from '@/lib/supabase/relationship-queries'
+import type { AthleteNeedingOnboarding } from '@/types/manual-database-types'
 
 // Define specific types for our database operations
 type InvitationWithExpiry = Database['public']['Views']['coach_invitations_with_expiry']['Row']
@@ -94,6 +97,7 @@ export default function CoachDashboard() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [athletesSectionOpen, setAthletesSectionOpen] = useState(true)
   const [invitationsSectionOpen, setInvitationsSectionOpen] = useState(true)
+  const [athletesNeedingOnboarding, setAthletesNeedingOnboarding] = useState<AthleteNeedingOnboarding[]>([])
   
   // Track if data has been fetched to prevent duplicate fetches
   const dataFetched = useRef(false)
@@ -104,7 +108,7 @@ export default function CoachDashboard() {
   // ================================================================
   const fetchDashboardData = useCallback(async () => {
     // Prevent duplicate fetches
-    if (dataFetched.current || !user || !isCoach) {
+    if (dataFetched.current || !user || !isCoach || !coachProfile) {
       console.log('⏭️ Skipping data fetch (already fetched or not ready)')
       return
     }
@@ -115,43 +119,58 @@ export default function CoachDashboard() {
     try {
       console.log('📊 Fetching dashboard data...')
       const supabase = createClient()
-
-      // Fetch athletes
-      const { data: athleteData, error: athleteError } = await supabase
-        .from('athlete_profiles')
+ console.log('🔍 Fetching relationships for coach_id:', user.id)
+      // Fetch athletes through relationships
+      const { data: relationshipData, error: relationshipError } = await supabase
+        .from('coach_athlete_relationships')
         .select(`
           id,
-          user_id,
-          coach_id,
-          experience_level,
-          goal_race_distance,
+          athlete_id,
+          status,
           created_at,
-          users!athlete_profiles_user_id_fkey (
-            first_name,
-            last_name,
-            email
+          athlete_profiles!coach_athlete_relationships_athlete_id_fkey (
+            id,
+            user_id,
+            experience_level,
+            goal_race_distance,
+            users!athlete_profiles_user_id_fkey (
+              first_name,
+              last_name,
+              email
+            )
           )
         `)
-        .eq('coach_id', user.id)
+        .eq('coach_id', coachProfile?.id)
         .order('created_at', { ascending: false })
 
-      // Format athletes data
-      let formattedAthletes: Athlete[] = []
-      if (athleteError) {
-        console.error('Error fetching athletes:', athleteError)
-      } else {
-        formattedAthletes = (athleteData as AthleteWithUser[])?.map((athlete) => ({
-          id: athlete.id,
-          first_name: athlete.users?.first_name || '',
-          last_name: athlete.users?.last_name || '',
-          email: athlete.users?.email || '',
-          experience_level: athlete.experience_level || 'beginner',
-          goal_race_distance: athlete.goal_race_distance,
-          created_at: athlete.created_at
-        })) || []
-        console.log(`✅ Loaded ${formattedAthletes.length} athletes`)
-      }
+        // Format athletes data from relationships
+        let formattedAthletes: Athlete[] = []
+        if (relationshipError) {
+          console.error('Error fetching athlete relationships:', relationshipError)
+        } else {
+          formattedAthletes = relationshipData?.map((relationship: any) => ({
+            id: relationship.athlete_profiles?.id || '',
+            first_name: relationship.athlete_profiles?.users?.first_name || '',
+            last_name: relationship.athlete_profiles?.users?.last_name || '',
+            email: relationship.athlete_profiles?.users?.email || '',
+            experience_level: relationship.athlete_profiles?.experience_level || 'beginner',
+            goal_race_distance: relationship.athlete_profiles?.goal_race_distance,
+            created_at: relationship.created_at,
+            relationship_status: relationship.status
+          })) || []
+          console.log(`✅ Loaded ${formattedAthletes.length} athletes from relationships`)
+        }
+      // Fetch athletes needing onboarding
+        const relationshipQueries = new RelationshipQueries(supabase)
+        const { data: onboardingData, error: onboardingError } = await relationshipQueries.getAthletesNeedingOnboarding(coachProfile?.id)
 
+        if (onboardingError) {
+          console.error('Error fetching onboarding athletes:', onboardingError)
+        } else {
+          setAthletesNeedingOnboarding(onboardingData || [])
+          console.log(`✅ Found ${onboardingData?.length || 0} athletes needing onboarding`)
+          console.log('🔍 Onboarding data:', onboardingData)  // ← ADD THIS LINE
+        }
       // Fetch recent invitations
       const { data: invitationData, error: invitationError } = await supabase
         .from('coach_invitations_with_expiry')
@@ -170,8 +189,8 @@ export default function CoachDashboard() {
       }
 
       // Calculate stats
-      const totalAthletes = athleteData?.length || 0
-      const activeAthletes = totalAthletes
+     const totalAthletes = relationshipData?.length || 0
+      const activeAthletes = relationshipData?.filter((r: any) => r.status === 'active').length || 0
       const pendingInvitations = invitationData?.filter((inv: InvitationWithExpiry) => inv.status === 'pending').length || 0
 
       const newStats = {
@@ -194,7 +213,7 @@ export default function CoachDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [user, isCoach]) // ONLY depends on stable values
+  }, [user, isCoach, coachProfile]) // ONLY depends on stable values
 
   // ================================================================
   // EFFECT 1: JWT-FIRST AUTHORIZATION CHECK (runs once per auth change)
@@ -351,7 +370,54 @@ export default function CoachDashboard() {
       default: return status.charAt(0).toUpperCase() + status.slice(1)
     }
   }
+// ================================================================
+  // ONBOARDING NOTIFICATION HANDLERS
+  // ================================================================
 
+  const handleDismissOnboarding = async (relationshipId: string) => {
+    try {
+      const supabase = createClient()
+      const relationshipQueries = new RelationshipQueries(supabase)
+      
+      // Dismiss the notification
+      const { error } = await relationshipQueries.dismissOnboardingNotification(relationshipId)
+      
+      if (error) {
+        console.error('Error dismissing notification:', error)
+        return
+      }
+      
+      // Remove from local state
+      setAthletesNeedingOnboarding(prev => 
+        prev.filter(a => a.relationship_id !== relationshipId)
+      )
+      
+      console.log('✅ Notification dismissed')
+    } catch (error) {
+      console.error('Error dismissing notification:', error)
+    }
+  }
+
+      const handleDismissAllOnboarding = async () => {
+        try {
+          const supabase = createClient()
+          const relationshipQueries = new RelationshipQueries(supabase)
+          
+          // Dismiss all notifications
+          await Promise.all(
+            athletesNeedingOnboarding.map(athlete =>
+              relationshipQueries.dismissOnboardingNotification(athlete.relationship_id)
+            )
+          )
+          
+          // Clear local state
+          setAthletesNeedingOnboarding([])
+          
+          console.log('✅ All notifications dismissed')
+        } catch (error) {
+          console.error('Error dismissing all notifications:', error)
+        }
+      }
   // ================================================================
   // RENDER
   // ================================================================
@@ -389,6 +455,15 @@ export default function CoachDashboard() {
           </div>
         </details>
       </div>
+      {/* 🆕 NEW: Onboarding Notification Banner */}
+          {slug && (
+            <OnboardingNotificationBanner
+              athletes={athletesNeedingOnboarding}
+              coachSlug={slug}
+              onDismiss={handleDismissOnboarding}
+              onDismissAll={handleDismissAllOnboarding}
+            />
+          )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

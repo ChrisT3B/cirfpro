@@ -18,8 +18,21 @@ export type CoachProfile = Tables<'coach_profiles'>
 export type AthleteProfile = Tables<'athlete_profiles'>
 
 // Only manually define types for views (not auto-generated)
+
 export type { 
   PublicCoachDirectory, 
   CoachProfileWithUser, 
-  CoachAthleteInvitation
+  CoachAthleteInvitation,
+  // Add these new exports:
+  CoachAthleteRelationship,
+  CoachAthleteRelationshipWithProfiles,
+  AthleteNeedingOnboarding,
+  OnboardingStats,
+  OnboardingStatus
 } from '@/types/manual-database-types'
+
+
+
+
+
+export { RelationshipQueries } from './supabase/relationship-queries'
