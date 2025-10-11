@@ -59,6 +59,82 @@ export const CIRFPRO_BRAND = {
 } as const
 
 /**
+ * EXTENDED COLOR PALETTE - For athlete cards and diverse UI elements
+ * These extend CIRFPRO brand colors for richer visual variety
+ */
+export const CIRFPRO_EXTENDED_COLORS = {
+  athlete: {
+    // CIRFPRO brand green (primary)
+    'cirfpro-green': {
+      gradient: 'bg-gradient-to-br from-cirfpro-green-500 to-cirfpro-green-600',
+      border: 'border-cirfpro-green-500',
+      bg: 'bg-cirfpro-green-100',
+      text: 'text-cirfpro-green-600',
+    },
+    // Extended palette for athlete cards
+    blue: {
+      gradient: 'bg-gradient-to-br from-blue-500 to-blue-600',
+      border: 'border-blue-500', 
+      bg: 'bg-blue-100',
+      text: 'text-blue-600',
+    },
+    purple: {
+      gradient: 'bg-gradient-to-br from-purple-500 to-purple-600',
+      border: 'border-purple-500',
+      bg: 'bg-purple-100', 
+      text: 'text-purple-600',
+    },
+    indigo: {
+      gradient: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
+      border: 'border-indigo-500',
+      bg: 'bg-indigo-100',
+      text: 'text-indigo-600',
+    },
+    teal: {
+      gradient: 'bg-gradient-to-br from-teal-500 to-teal-600',
+      border: 'border-teal-500',
+      bg: 'bg-teal-100',
+      text: 'text-teal-600',
+    },
+    emerald: {
+      gradient: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
+      border: 'border-emerald-500',
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-600',
+    },
+    cyan: {
+      gradient: 'bg-gradient-to-br from-cyan-500 to-cyan-600',
+      border: 'border-cyan-500',
+      bg: 'bg-cyan-100',
+      text: 'text-cyan-600',
+    },
+    rose: {
+      gradient: 'bg-gradient-to-br from-rose-500 to-rose-600',
+      border: 'border-rose-500',
+      bg: 'bg-rose-100',
+      text: 'text-rose-600',
+    },
+    orange: {
+      gradient: 'bg-gradient-to-br from-orange-500 to-orange-600',
+      border: 'border-orange-500',
+      bg: 'bg-orange-100',
+      text: 'text-orange-600',
+    },
+    amber: {
+      gradient: 'bg-gradient-to-br from-amber-500 to-amber-600',
+      border: 'border-amber-500',
+      bg: 'bg-amber-100',
+      text: 'text-amber-600',
+    },
+  }
+} as const
+
+/**
+ * ATHLETE CARD COLOR TYPES - For type safety
+ */
+export type AthleteCardColor = keyof typeof CIRFPRO_EXTENDED_COLORS.athlete
+
+/**
  * LEGACY SUPPORT - Keep your existing constants
  * We'll migrate these gradually to the new system above
  */
@@ -133,5 +209,14 @@ export const CIRFPRO_COMPONENTS = {
       lg: 'h-12 px-8 py-3 text-lg',
       xl: 'h-14 px-10 py-4 text-xl',
     }
+  },
+
+  // Carousel base classes (new for athlete carousel)
+  carousel: {
+    container: 'relative w-full',
+    scrollArea: 'flex gap-4 overflow-x-auto scroll-smooth',
+    navButton: 'absolute top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-white rounded-full shadow-lg border border-cirfpro-gray-200 flex items-center justify-center text-cirfpro-gray-600 hover:text-cirfpro-gray-800 hover:bg-cirfpro-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-cirfpro-green-500 focus:ring-offset-2',
+    indicators: 'flex justify-center gap-2 mt-4',
+    indicator: 'w-2 h-2 rounded-full transition-colors cursor-pointer',
   }
 } as const

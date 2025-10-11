@@ -10,12 +10,14 @@ import InvitationModal from '@/components/InvitationModal'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { Database } from '@/types/database.types'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
-import { StatCard } from '@/components/ui/StatCard'
+import { StatCard, type StatColor } from '@/components/ui/StatCard'
 import { Heading, Text, Caption, Badge } from '@/components/ui/Typography'
 import ProfileCompletionBar from '@/components/ProfileCompletionBar'
 import OnboardingNotificationBanner from '@/components/coach/OnboardingNotificationBanner'
 import { RelationshipQueries } from '@/lib/supabase/relationship-queries'
 import type { AthleteNeedingOnboarding } from '@/types/manual-database-types'
+import DashboardAthletesSection from '@/components/coach/DashboardAthletesSection'
+import StatsCarousel from '@/components/ui/StatsCarousel'
 
 // Define specific types for our database operations
 type InvitationWithExpiry = Database['public']['Views']['coach_invitations_with_expiry']['Row']
@@ -465,115 +467,59 @@ export default function CoachDashboard() {
             />
           )}
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         {/* 🧭 Quick Stats — carousel-enhanced */}
+<section className="relative">
+  <h2 className="text-lg font-semibold mb-3">Quick Stats</h2>
+  <StatsCarousel>
+    {([
+      {
+        icon: '👥',
+        label: 'Total Athletes',
+        value: stats.total_athletes,
+        color: 'blue' as StatColor,
+      },
+      {
+        icon: '⚡',
+        label: 'Active Athletes',
+        value: stats.active_athletes,
+        color: 'cirfpro-green' as StatColor,
+      },
+      {
+        icon: '📧',
+        label: 'Pending Invites',
+        value: stats.pending_invitations,
+        color: 'amber' as StatColor,
+      },
+      {
+        icon: '🏃',
+        label: 'This Week',
+        value: stats.this_week_sessions,
+        color: 'purple' as StatColor,
+      },
+    ] as const).map((item, idx) => (
+      <div
+        key={idx}
+        className="flex-shrink-0 snap-center w-[70%] sm:w-[40%] md:w-[22%] max-w-[280px]"
+      >
         <StatCard
-          icon="👥"
-          label="Total Athletes"
-          value={stats.total_athletes}
-          color="blue"
+          icon={item.icon}
+          label={item.label}
+          value={item.value}
+          color={item.color}
           variant="dashboard"
-        />
-
-        <StatCard
-          icon="⚡"
-          label="Active Athletes"
-          value={stats.active_athletes}
-          color="cirfpro-green"
-          variant="dashboard"
-        />
-
-        <StatCard
-          icon="📧"
-          label="Pending Invites"
-          value={stats.pending_invitations}
-          color="yellow"
-          variant="dashboard"
-        />
-
-        <StatCard
-          icon="🏃"
-          label="This Week"
-          value={stats.this_week_sessions}
-          color="purple"
-          variant="dashboard"
+          className="h-full transition-transform duration-300 hover:scale-[1.03]"
         />
       </div>
+    ))}
+  </StatsCarousel>
+</section>
 
-      {/* Action Buttons */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => setIsInviteModalOpen(true)}
-              className="bg-cirfpro-green-600 text-white px-4 py-2 rounded-lg hover:bg-cirfpro-green-700 transition-colors font-medium flex items-center gap-2"
-            >
-              📧 Invite Athlete
-            </button>
-            <Link
-              href={`/coach/${slug}/athletes`}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              👥 Manage Athletes
-            </Link>
-            <Link
-              href={`/coach/${slug}/plans`}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              📋 Training Plans
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Athletes Section */}
-      <Card>
-        <CardHeader>
-          <button
-            onClick={() => setAthletesSectionOpen(!athletesSectionOpen)}
-            className="flex items-center justify-between w-full text-left"
-          >
-            <CardTitle>Your Athletes ({athletes.length})</CardTitle>
-            {athletesSectionOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </button>
-        </CardHeader>
-        {athletesSectionOpen && (
-          <CardContent>
-            {athletes.length === 0 ? (
-              <div className="text-center py-8">
-                <Text color="muted">No athletes yet. Invite athletes to get started!</Text>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {athletes.map((athlete) => (
-                  <div
-                    key={athlete.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex-1">
-                      <Text className="font-medium">
-                        {athlete.first_name} {athlete.last_name}
-                      </Text>
-                      <Caption color="muted">{athlete.email}</Caption>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="info" className="mb-1">
-                        {athlete.experience_level}
-                      </Badge>
-                      {athlete.goal_race_distance && (
-                        <Caption color="muted">Goal: {athlete.goal_race_distance}</Caption>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
+      {/* Athletes Section */}      
+      <DashboardAthletesSection
+        athletes={athletes}
+        coachSlug={slug!}
+        onInviteClick={() => setIsInviteModalOpen(true)}
+      />
 
       {/* Recent Invitations */}
       <Card>

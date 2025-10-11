@@ -1,241 +1,110 @@
-// src/components/ui/StatCard.tsx - Specialized component for dashboard metrics
+'use client'
+
 import React from 'react'
-import { Card } from '@/components/ui/Card'
 import { cn } from '@/lib/styles'
-import { Heading, Caption, Badge } from '@/components/ui/Typography'
 
-// Supported color variants (matches your current usage)
-type StatColor = 'blue' | 'green' | 'cirfpro-green' | 'red' | 'yellow' | 'purple' | 'gray'
+/* 🎨 Type definitions */
+export type StatColor =
+  | 'cirfpro-green'
+  | 'blue'
+  | 'purple'
+  | 'amber'
+  | 'teal'
+  | 'rose'
+  | 'indigo'
+  | 'cyan'
+  | 'emerald'
+  | 'orange'
 
-// Two main layouts found in your codebase
-type StatVariant = 'dashboard' | 'invitation'
+export type StatVariant = 'default' | 'dashboard'
 
-// Optional trend indicator
-interface TrendData {
+export interface TrendData {
   value: number
-  direction: 'up' | 'down'
-  period?: string // e.g., "vs last month"
+  label: string
 }
 
-export interface StatCardProps {
-  // Core data
+interface StatCardProps {
+  icon?: string | React.ReactNode
   label: string
   value: string | number
-  
-  // Visual styling
   color?: StatColor
   variant?: StatVariant
-  
-  // Icon (can be emoji string or React element)
-  icon?: React.ReactNode | string
-  
-  // Optional enhancements
   trend?: TrendData
-  subtitle?: string
-  loading?: boolean
-  
-  // Standard div props
   className?: string
-  onClick?: () => void
 }
 
-// Color mappings for consistent styling
+/* 🎨 Color classes for icons and accents */
 const colorClasses = {
-  // Icon background colors (for dashboard variant)
   iconBackgrounds: {
-    blue: 'bg-blue-100',
-    green: 'bg-green-100', 
     'cirfpro-green': 'bg-cirfpro-green-100',
-    red: 'bg-red-100',
-    yellow: 'bg-yellow-100',
+    blue: 'bg-blue-100',
     purple: 'bg-purple-100',
-    gray: 'bg-cirfpro-gray-100',
+    amber: 'bg-amber-100',
+    teal: 'bg-teal-100',
+    rose: 'bg-rose-100',
+    indigo: 'bg-indigo-100',
+    cyan: 'bg-cyan-100',
+    emerald: 'bg-emerald-100',
+    orange: 'bg-orange-100',
   },
-  
-  // Icon text colors (for dashboard variant)
   iconColors: {
-    blue: 'text-blue-600',
-    green: 'text-green-600',
-    'cirfpro-green': 'text-cirfpro-green-600', 
-    red: 'text-red-600',
-    yellow: 'text-yellow-600',
-    purple: 'text-purple-600',
-    gray: 'text-cirfpro-gray-600',
-  },
-  
-  // Value text colors (for invitation variant)
-  valueColors: {
-    blue: 'text-blue-600',
-    green: 'text-green-600',
     'cirfpro-green': 'text-cirfpro-green-600',
-    red: 'text-red-600', 
-    yellow: 'text-yellow-600',
+    blue: 'text-blue-600',
     purple: 'text-purple-600',
-    gray: 'text-cirfpro-gray-600',
+    amber: 'text-amber-600',
+    teal: 'text-teal-600',
+    rose: 'text-rose-600',
+    indigo: 'text-indigo-600',
+    cyan: 'text-cyan-600',
+    emerald: 'text-emerald-600',
+    orange: 'text-orange-600',
   },
-  
-  // Accent border colors (for invitation variant)
-  accentColors: {
-    blue: 'blue' as const,
-    green: 'green' as const,
-    'cirfpro-green': 'cirfpro-green' as const,
-    red: 'red' as const,
-    yellow: 'yellow' as const,
-    purple: 'purple' as const,
-    gray: 'gray' as const,
-  }
 }
 
-// Trend indicator component
-const TrendIndicator: React.FC<{ trend: TrendData }> = ({ trend }) => {
-  const isPositive = trend.direction === 'up'
-  const trendColor = isPositive ? 'text-green-600' : 'text-red-600'
-  const trendIcon = isPositive ? '↗️' : '↘️'
-  
+export function StatCard({
+  icon,
+  label,
+  value,
+  color = 'cirfpro-green',
+  variant = 'default',
+  className,
+}: StatCardProps) {
   return (
-    <div className={cn('flex items-center text-xs font-medium', trendColor)}>
-      <span className="mr-1">{trendIcon}</span>
-      <span>{Math.abs(trend.value)}%</span>
-      {trend.period && (
-        <span className="ml-1 text-cirfpro-gray-500">{trend.period}</span>
+    <div
+      className={cn(
+        'bg-white rounded-xl shadow-sm flex flex-col items-center justify-center text-center',
+        // 🔧 Uniform sizing & spacing
+        'p-5 sm:p-6 w-full min-w-[160px] max-w-[200px] h-[140px]',
+        'transition-all duration-300 hover:shadow-md',
+        variant === 'dashboard' && 'py-4',
+        className
       )}
+    >
+      {/* Icon */}
+      {icon && (
+        <div
+          className={cn(
+            'p-3 rounded-lg flex items-center justify-center mb-3',
+            'transition-transform duration-200 group-hover:scale-105',
+            colorClasses.iconBackgrounds[color]
+          )}
+        >
+          {typeof icon === 'string' ? (
+            <span className={cn('text-2xl', colorClasses.iconColors[color])}>{icon}</span>
+          ) : (
+            <div className={cn('w-6 h-6', colorClasses.iconColors[color])}>{icon}</div>
+          )}
+        </div>
+      )}
+
+      {/* Label */}
+      <p className="text-sm text-gray-500 leading-tight">{label}</p>
+
+      {/* Value */}
+      <p className="text-xl font-bold text-gray-800 mt-1">{value}</p>
     </div>
   )
 }
 
-// Loading skeleton for stat cards
-const StatCardSkeleton: React.FC<{ variant: StatVariant }> = ({ variant }) => {
-  if (variant === 'dashboard') {
-    return (
-      <Card>
-        <div className="flex items-center animate-pulse">
-          <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-          <div className="ml-4 flex-1">
-            <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
-            <div className="h-6 bg-gray-200 rounded w-16"></div>
-          </div>
-        </div>
-      </Card>
-    )
-  }
-  
-  return (
-    <Card variant="accent" padding="sm">
-      <div className="animate-pulse">
-        <div className="h-3 bg-gray-200 rounded w-16 mb-2"></div>
-        <div className="h-6 bg-gray-200 rounded w-12"></div>
-      </div>
-    </Card>
-  )
-}
 
-const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
-  ({ 
-    label, 
-    value, 
-    color = 'gray', 
-    variant = 'dashboard', 
-    icon, 
-    trend, 
-    subtitle,
-    loading = false,
-    className,
-    onClick,
-    ...props 
-  }, ref) => {
-    
-    // Show skeleton while loading
-    if (loading) {
-      return <StatCardSkeleton variant={variant} />
-    }
-    
-    // Dashboard variant (your current dashboard stat cards)
-    if (variant === 'dashboard') {
-      return (
-        <Card 
-          ref={ref}
-          className={cn(onClick && 'cursor-pointer', className)}
-          onClick={onClick}
-          {...props}
-        >
-          <div className="flex items-center">
-            {/* Icon section */}
-            {icon && (
-              <div className={cn(
-                'p-2 rounded-lg flex items-center justify-center',
-                colorClasses.iconBackgrounds[color]
-              )}>
-                {typeof icon === 'string' ? (
-                  <span className={cn('text-xl', colorClasses.iconColors[color])}>
-                    {icon}
-                  </span>
-                ) : (
-                  <div className={cn('w-6 h-6', colorClasses.iconColors[color])}>
-                    {icon}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Content section */}
-            <div className={cn('flex-1', icon && 'ml-4')}>
-              <p className="text-sm font-medium text-cirfpro-gray-600">
-                {label}
-              </p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-semibold text-cirfpro-gray-900">
-                  {typeof value === 'number' ? value.toLocaleString() : value}
-                </p>
-                {trend && <TrendIndicator trend={trend} />}
-              </div>
-              {subtitle && (
-                <p className="text-xs text-cirfpro-gray-500 mt-1">{subtitle}</p>
-              )}
-            </div>
-          </div>
-        </Card>
-      )
-    }
-    
-    // Invitation variant (your current invitation stat cards)
-    return (
-      <Card 
-        ref={ref}
-        variant="accent"
-        accentColor={colorClasses.accentColors[color]}
-        padding="sm"
-        className={cn(onClick && 'cursor-pointer', className)}
-        onClick={onClick}
-        {...props}
-      >
-        <Caption uppercase color="muted" className="mb-1">
-        {label}
-        </Caption>
-        <div className="flex items-center gap-2">
-         <Heading 
-            level="2xl" 
-            className={cn(
-                color === 'blue' && 'text-blue-600',
-                color === 'green' && 'text-green-600',
-                color === 'cirfpro-green' && 'text-cirfpro-green-600',
-                color === 'red' && 'text-red-600',
-                color === 'yellow' && 'text-yellow-600',
-                color === 'purple' && 'text-purple-600',
-                color === 'gray' && 'text-cirfpro-gray-600'
-            )}
-            >
-            {typeof value === 'number' ? value.toLocaleString() : value}
-            </Heading>
-          {trend && <TrendIndicator trend={trend} />}
-        </div>
-        {subtitle && (
-          <Caption color="light" className="mt-1">{subtitle}</Caption>
-        )}
-      </Card>
-    )
-  }
-)
 
-StatCard.displayName = "StatCard"
-
-export { StatCard, type StatColor, type StatVariant, type TrendData }
