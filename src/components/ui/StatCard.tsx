@@ -15,8 +15,9 @@ export type StatColor =
   | 'cyan'
   | 'emerald'
   | 'orange'
+  | 'gray'  // ✅ ADDED gray support
 
-export type StatVariant = 'default' | 'dashboard'
+export type StatVariant = 'default' | 'dashboard' | 'invitation'  // Added 'invitation' variant
 
 export interface TrendData {
   value: number
@@ -46,6 +47,7 @@ const colorClasses = {
     cyan: 'bg-cyan-100',
     emerald: 'bg-emerald-100',
     orange: 'bg-orange-100',
+    gray: 'bg-gray-100',  // ✅ ADDED
   },
   iconColors: {
     'cirfpro-green': 'text-cirfpro-green-600',
@@ -58,6 +60,7 @@ const colorClasses = {
     cyan: 'text-cyan-600',
     emerald: 'text-emerald-600',
     orange: 'text-orange-600',
+    gray: 'text-gray-600',  // ✅ ADDED
   },
 }
 
