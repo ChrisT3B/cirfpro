@@ -1,3 +1,4 @@
+// src/components/ui/StatCard.tsx
 'use client'
 
 import React from 'react'
@@ -15,9 +16,12 @@ export type StatColor =
   | 'cyan'
   | 'emerald'
   | 'orange'
-  | 'gray'  // ✅ ADDED gray support
+  | 'gray'    // ✅ Added
+  | 'red'     // ✅ Added
+  | 'yellow'  // ✅ Added
+  | 'green'   // ✅ Added
 
-export type StatVariant = 'default' | 'dashboard' | 'invitation'  // Added 'invitation' variant
+export type StatVariant = 'default' | 'dashboard' | 'invitation'
 
 export interface TrendData {
   value: number
@@ -31,6 +35,7 @@ interface StatCardProps {
   color?: StatColor
   variant?: StatVariant
   trend?: TrendData
+  subtitle?: string  // ✅ Added for invitation variant
   className?: string
 }
 
@@ -47,7 +52,10 @@ const colorClasses = {
     cyan: 'bg-cyan-100',
     emerald: 'bg-emerald-100',
     orange: 'bg-orange-100',
-    gray: 'bg-gray-100',  // ✅ ADDED
+    gray: 'bg-gray-100',      // ✅ Added
+    red: 'bg-red-100',        // ✅ Added
+    yellow: 'bg-yellow-100',  // ✅ Added
+    green: 'bg-green-100',    // ✅ Added
   },
   iconColors: {
     'cirfpro-green': 'text-cirfpro-green-600',
@@ -60,7 +68,10 @@ const colorClasses = {
     cyan: 'text-cyan-600',
     emerald: 'text-emerald-600',
     orange: 'text-orange-600',
-    gray: 'text-gray-600',  // ✅ ADDED
+    gray: 'text-gray-600',      // ✅ Added
+    red: 'text-red-600',        // ✅ Added
+    yellow: 'text-yellow-600',  // ✅ Added
+    green: 'text-green-600',    // ✅ Added
   },
 }
 
@@ -70,6 +81,7 @@ export function StatCard({
   value,
   color = 'cirfpro-green',
   variant = 'default',
+  subtitle,
   className,
 }: StatCardProps) {
   return (
@@ -80,6 +92,7 @@ export function StatCard({
         'p-5 sm:p-6 w-full min-w-[160px] max-w-[200px] h-[140px]',
         'transition-all duration-300 hover:shadow-md',
         variant === 'dashboard' && 'py-4',
+        variant === 'invitation' && 'min-w-[120px] max-w-[160px] h-[120px] p-4',
         className
       )}
     >
@@ -105,9 +118,11 @@ export function StatCard({
 
       {/* Value */}
       <p className="text-xl font-bold text-gray-800 mt-1">{value}</p>
+
+      {/* Subtitle (optional) */}
+      {subtitle && (
+        <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+      )}
     </div>
   )
 }
-
-
-
