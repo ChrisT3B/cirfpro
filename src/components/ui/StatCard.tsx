@@ -36,7 +36,8 @@ interface StatCardProps {
   color?: StatColor
   variant?: StatVariant
   trend?: TrendData
-  subtitle?: string  // ✅ Added for invitation variant
+  subtitle?: string
+  loading?: boolean  // ✅ Added loading state
   className?: string
 }
 
@@ -83,8 +84,35 @@ export function StatCard({
   color = 'cirfpro-green',
   variant = 'default',
   subtitle,
+  loading = false,
   className,
 }: StatCardProps) {
+  // Loading skeleton state
+  if (loading) {
+    return (
+      <div
+        className={cn(
+          'bg-white rounded-xl shadow-sm flex flex-col items-center justify-center text-center',
+          'p-5 sm:p-6 w-full min-w-[160px] max-w-[200px] h-[140px]',
+          'animate-pulse',
+          variant === 'dashboard' && 'py-4',
+          variant === 'invitation' && 'min-w-[120px] max-w-[160px] h-[120px] p-4',
+          className
+        )}
+      >
+        {/* Loading icon skeleton */}
+        {icon && (
+          <div className="w-12 h-12 bg-gray-200 rounded-lg mb-3"></div>
+        )}
+        {/* Loading label skeleton */}
+        <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
+        {/* Loading value skeleton */}
+        <div className="h-6 bg-gray-200 rounded w-16"></div>
+      </div>
+    )
+  }
+
+  // Normal state - render actual content
   return (
     <div
       className={cn(
