@@ -1,33 +1,49 @@
 // src/app/auth/callback/route.ts
 
 import { NextRequest, NextResponse } from 'next/server'
-import { AuthService } from '@/lib/authService'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
-  const token = requestUrl.searchParams.get('token')
+  const token_hash = requestUrl.searchParams.get('token_hash')
   const type = requestUrl.searchParams.get('type')
+  const next = requestUrl.searchParams.get('next') ?? '/dashboard'
 
-  console.log('Auth callback triggered with:', { token: token?.substring(0, 10), type })
+  console.log('Auth callback triggered with:', { 
+    token_hash: token_hash?.substring(0, 10), 
+    type,
+    origin: requestUrl.origin 
+  })
 
-  if (token && type === 'signup') {
+  // Handle email verification callback
+  if (token_hash && type) {
+    const supabase = await createClient()
+
     try {
-      console.log('Processing email verification with AuthService')
+      console.log('Processing email verification via Supabase')
       
-      // Use your proven verification method
-      const result = await AuthService.verifyEmail(token)
-      
-      if (result.success) {
-        console.log('Email verification successful')
+      // Verify the token with Supabase
+      // This confirms the email and triggers your database migration
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash,
+        type: type as any,
+      })
+
+      if (error) {
+        console.error('Email verification failed:', error.message)
         return NextResponse.redirect(
-          `${requestUrl.origin}/auth/signin?verified=true&message=${encodeURIComponent(result.message)}`
-        )
-      } else {
-        console.error('Email verification failed:', result.message)
-        return NextResponse.redirect(
-          `${requestUrl.origin}/auth/signin?error=verification_failed&message=${encodeURIComponent(result.message)}`
+          `${requestUrl.origin}/auth/signin?error=verification_failed&message=${encodeURIComponent(error.message)}`
         )
       }
+
+      console.log('✅ Email verification successful')
+      
+      // Database trigger has now migrated user from pending_users to users
+      // Redirect to sign-in with success message
+      return NextResponse.redirect(
+        `${requestUrl.origin}/auth/signin?verified=true&message=${encodeURIComponent('Email verified successfully! You can now sign in.')}`
+      )
+
     } catch (error) {
       console.error('Unexpected error in auth callback:', error)
       return NextResponse.redirect(
@@ -36,7 +52,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Handle other callback types or missing parameters
-  console.log('Invalid callback parameters, redirecting to signin')
-  return NextResponse.redirect(`${requestUrl.origin}/auth/signin`)
+  // Handle other callback types or standard auth redirects
+  console.log('Standard auth callback, redirecting to:', next)
+  return NextResponse.redirect(`${requestUrl.origin}${next}`)
 }
