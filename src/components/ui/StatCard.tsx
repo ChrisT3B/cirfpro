@@ -25,7 +25,8 @@ export type StatVariant = 'default' | 'dashboard' | 'invitation'
 
 export interface TrendData {
   value: number
-  label: string
+  direction: 'up' | 'down'
+  period?: string
 }
 
 interface StatCardProps {
