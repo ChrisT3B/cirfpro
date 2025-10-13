@@ -388,79 +388,194 @@ if (sessionsData) {
 
             {/* 2. Athlete Training Background */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Training Background
+            <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Training Background
+                </div>
+                {/* Show different actions based on onboarding status */}
+                {trainingBackground && (trainingBackground.medical_conditions.length > 0 || trainingBackground.previous_injuries.length > 0) ? (
+                    <Link
+                    href={`/coach/${coachSlug}/athletes/${athlete.id}/onboarding`}
+                    className="text-cirfpro-green-600 hover:text-cirfpro-green-700 text-sm font-medium"
+                    >
+                    View Details
+                    </Link>
+                ) : (
+                    <Link
+                    href={`/coach/${coachSlug}/athletes/${athlete.id}/onboarding`}
+                    className="text-cirfpro-green-600 hover:text-cirfpro-green-700 text-sm font-medium"
+                    >
+                    Start Onboarding
+                    </Link>
+                )}
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {trainingBackground ? (
-                  <>
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <Caption color="muted" className="mb-2">Experience Level</Caption>
-                        {trainingBackground.fitness_level ? (
-                          <Badge variant="info" className="capitalize">
-                            {trainingBackground.fitness_level}
-                          </Badge>
-                        ) : (
-                          <Text size="sm" color="muted">Not specified</Text>
-                        )}
-                      </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {/* Check if we have meaningful training background data */}
+                {trainingBackground && (
+                trainingBackground.fitness_level || 
+                trainingBackground.medical_conditions.length > 0 || 
+                trainingBackground.previous_injuries.length > 0
+                ) ? (
+                /* COMPLETED/IN-PROGRESS ONBOARDING STATE */
+                <>
+                    {/* Basic Info Row */}
+                    <div className="flex items-center justify-between p-4 bg-cirfpro-green-50 rounded-lg border border-cirfpro-green-100">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-cirfpro-green-500 rounded-full flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                        <Text className="font-medium text-cirfpro-green-800">Onboarding Complete</Text>
+                        <Caption className="text-cirfpro-green-600">Background assessment available</Caption>
+                        </div>
+                    </div>
+                    <Link
+                        href={`/coach/${coachSlug}/athletes/${athlete.id}/onboarding`}
+                        className="text-cirfpro-green-600 hover:text-cirfpro-green-700 font-medium text-sm"
+                    >
+                        View Full Assessment →
+                    </Link>
                     </div>
 
-                    {/* Medical Conditions */}
-                    {trainingBackground.medical_conditions.length > 0 && (
-                      <div>
-                        <Caption color="muted" className="mb-2">Medical Conditions</Caption>
-                        <ul className="space-y-1">
-                          {trainingBackground.medical_conditions.map((condition, index) => (
-                            <li key={index} className="text-sm text-cirfpro-gray-600">
-                              • {condition}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    {/* Key Background Info Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <Caption color="muted" className="mb-2">Experience Level</Caption>
+                        {trainingBackground.fitness_level ? (
+                        <Badge variant="info" className="capitalize">
+                            {trainingBackground.fitness_level}
+                        </Badge>
+                        ) : (
+                        <Text size="sm" color="muted">Not specified</Text>
+                        )}
+                    </div>
+                    
+                    {/* Show injury/medical summary if exists */}
+                    {(trainingBackground.previous_injuries.length > 0 || trainingBackground.medical_conditions.length > 0) && (
+                        <div>
+                        <Caption color="muted" className="mb-2">Health Considerations</Caption>
+                        <div className="flex flex-wrap gap-1">
+                            {trainingBackground.previous_injuries.length > 0 && (
+                            <Badge variant="warning" size="sm">
+                                {trainingBackground.previous_injuries.length} injury history
+                            </Badge>
+                            )}
+                            {trainingBackground.medical_conditions.length > 0 && (
+                            <Badge variant="info" size="sm">
+                                {trainingBackground.medical_conditions.length} medical condition(s)
+                            </Badge>
+                            )}
+                        </div>
+                        </div>
                     )}
+                    </div>
 
-                    {/* Previous Injuries */}
+                    {/* Quick Summary Lists */}
+                    <div className="space-y-4">
+                    {/* Previous Injuries Summary */}
                     {trainingBackground.previous_injuries.length > 0 && (
-                      <div>
-                        <Caption color="muted" className="mb-2">Previous Injuries</Caption>
-                        <ul className="space-y-1">
-                          {trainingBackground.previous_injuries.map((injury, index) => (
-                            <li key={index} className="text-sm text-cirfpro-gray-600">
-                              • {injury}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                        <div>
+                        <Caption color="muted" className="mb-2">Recent Injury History</Caption>
+                        <div className="bg-cirfpro-gray-50 rounded-lg p-3">
+                            {trainingBackground.previous_injuries.slice(0, 2).map((injury, index) => (
+                            <Text key={index} size="sm" className="block mb-1 last:mb-0">
+                                • {injury}
+                            </Text>
+                            ))}
+                            {trainingBackground.previous_injuries.length > 2 && (
+                            <Text size="sm" color="muted" className="mt-2">
+                                +{trainingBackground.previous_injuries.length - 2} more items
+                            </Text>
+                            )}
+                        </div>
+                        </div>
                     )}
 
-                    {(trainingBackground.medical_conditions.length === 0 && trainingBackground.previous_injuries.length === 0) && (
-                      <div className="text-center py-4">
-                        <Text color="muted" size="sm">No medical conditions or injuries recorded</Text>
-                      </div>
+                    {/* Medical Conditions Summary */}
+                    {trainingBackground.medical_conditions.length > 0 && (
+                        <div>
+                        <Caption color="muted" className="mb-2">Medical Considerations</Caption>
+                        <div className="bg-cirfpro-gray-50 rounded-lg p-3">
+                            {trainingBackground.medical_conditions.slice(0, 2).map((condition, index) => (
+                            <Text key={index} size="sm" className="block mb-1 last:mb-0">
+                                • {condition}
+                            </Text>
+                            ))}
+                            {trainingBackground.medical_conditions.length > 2 && (
+                            <Text size="sm" color="muted" className="mt-2">
+                                +{trainingBackground.medical_conditions.length - 2} more conditions
+                            </Text>
+                            )}
+                        </div>
+                        </div>
                     )}
-                  </>
-                ) : (
-                  <div className="text-center py-6">
-                    <Text color="muted" className="mb-3">Training background not available</Text>
+                    </div>
+
+                    {/* Action to view full onboarding */}
+                    <div className="pt-4 border-t border-cirfpro-gray-100">
                     <Link
-                      href={`/coach/${coachSlug}/athletes/${athlete.id}/onboarding`}
-                      className="inline-flex items-center gap-2 bg-cirfpro-green-600 text-white px-4 py-2 rounded-lg hover:bg-cirfpro-green-700 transition-colors text-sm font-medium"
+                        href={`/coach/${coachSlug}/athletes/${athlete.id}/onboarding`}
+                        className="inline-flex items-center gap-2 text-cirfpro-green-600 hover:text-cirfpro-green-700 font-medium text-sm"
                     >
-                      Complete Onboarding
+                        <FileText className="w-4 h-4" />
+                        View Complete Assessment
                     </Link>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                    </div>
+                </>
+                ) : (
+                /* NO ONBOARDING DATA STATE */
+                <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-cirfpro-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-8 h-8 text-cirfpro-blue-600" />
+                    </div>
+                    
+                    <Heading level="h4" className="mb-2">Onboarding Required</Heading>
+                    <Text color="muted" className="mb-6 max-w-sm mx-auto">
+                    Complete the athlete assessment to understand their background, goals, and training history.
+                    </Text>
 
-          {/* Right Column */}
-          <div className="space-y-8">
+                    {/* Onboarding Benefits */}
+                    <div className="bg-cirfpro-gray-50 rounded-lg p-4 mb-6 text-left">
+                    <Caption className="font-medium mb-3 block">Assessment will collect:</Caption>
+                    <ul className="space-y-2 text-sm text-cirfpro-gray-600">
+                        <li className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-cirfpro-gray-400 rounded-full mt-2 flex-shrink-0"></div>
+                        Training experience and fitness level
+                        </li>
+                        <li className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-cirfpro-gray-400 rounded-full mt-2 flex-shrink-0"></div>
+                        Injury history and medical considerations
+                        </li>
+                        <li className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-cirfpro-gray-400 rounded-full mt-2 flex-shrink-0"></div>
+                        Training preferences and availability
+                        </li>
+                        <li className="flex items-start gap-2">
+                        <div className="w-1 h-1 bg-cirfpro-gray-400 rounded-full mt-2 flex-shrink-0"></div>
+                        Goals and motivation factors
+                        </li>
+                    </ul>
+                    </div>
+
+                    {/* Primary CTA */}
+                    <Link
+                    href={`/coach/${coachSlug}/athletes/${athlete.id}/onboarding`}
+                    className="inline-flex items-center gap-2 bg-cirfpro-green-600 text-white px-6 py-3 rounded-lg hover:bg-cirfpro-green-700 transition-colors font-medium"
+                    >
+                    <FileText className="w-4 h-4" />
+                    Begin Athlete Assessment
+                    </Link>
+                    
+                    <Caption color="muted" className="mt-3 block">
+                    Takes approximately 10-15 minutes
+                    </Caption>
+                </div>
+                )}
+            </CardContent>
+            </Card>
             
             {/* 3. Athlete Training Plan */}
             <Card>
