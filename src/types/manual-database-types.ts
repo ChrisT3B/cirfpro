@@ -484,4 +484,11 @@ export interface AssessmentWithDetails extends AthleteAssessment {
       email: string
     }
   }
+    coach_profiles?: {
+    workspace_slug: string
+    users: {
+      first_name: string | null
+      last_name: string | null
+    }
+  }
 }

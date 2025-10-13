@@ -36,3 +36,4 @@ export type {
 
 
 export { RelationshipQueries } from './supabase/relationship-queries'
+export { AssessmentQueries } from './supabase/assessment-queries'
