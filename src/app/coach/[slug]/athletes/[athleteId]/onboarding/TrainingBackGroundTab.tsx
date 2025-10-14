@@ -6,8 +6,13 @@ import { Input } from '@/components/ui/Input'
 import { Badge, Label } from '@/components/ui/Typography'
 import { CheckCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { updateAthleteAssessment } from '@/lib/assessment-queries'
+import { AssessmentQueries } from '@/lib/supabase/assessment-queries'
+import { createClient } from '@/lib/supabase'
+import { AssessmentTrainingBackgroundInsert } from '@/types/manual-database-types'
 
+
+const supabase = createClient()
+const assessmentQueries = new AssessmentQueries(supabase)
 interface TrainingBackgroundTabProps {
   athleteId: string
   initialData?: {
@@ -25,6 +30,15 @@ interface TrainingBackgroundTabProps {
     medicalClearance?: string
   }
   isLocked?: boolean
+}
+
+export interface TrainingBackgroundTabProps {
+  trainingBackground: AssessmentTrainingBackgroundInsert
+  setTrainingBackground: React.Dispatch<
+    React.SetStateAction<AssessmentTrainingBackgroundInsert>
+  >
+  assessmentQueries: AssessmentQueries
+  mode: 'view' | 'edit'
 }
 
 export default function TrainingBackgroundTab({
@@ -55,8 +69,9 @@ export default function TrainingBackgroundTab({
   const handleBlur = async () => {
     setIsSaving(true)
     try {
-      await updateAthleteAssessment(athleteId, formData)
-    } finally {
+      if (assessment?.id) {
+         await assessmentQueries.updateAssessment(assessment.id, { status: 'draft' })
+ }    } finally {
       setIsSaving(false)
     }
   }

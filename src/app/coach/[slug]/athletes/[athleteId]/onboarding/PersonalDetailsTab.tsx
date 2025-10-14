@@ -12,12 +12,14 @@ import {
 import { Input } from '@/components/ui/Input'
 import { Badge, Label } from '@/components/ui/Typography' // adjust path if Badge is exported differently
 import { CheckCircle } from 'lucide-react'
+import { AssessmentQueries } from '@/lib/supabase/assessment-queries'
 
 type Mode = 'view' | 'edit'
 
 export interface PersonalDetailsTabProps {
-  personalDetails: Partial<AssessmentPersonalDetailsInsert>
-  setPersonalDetails: React.Dispatch<React.SetStateAction<Partial<AssessmentPersonalDetailsInsert>>>
+  personalDetails: AssessmentPersonalDetailsInsert
+  setPersonalDetails: React.Dispatch<React.SetStateAction<AssessmentPersonalDetailsInsert>>
+  assessmentQueries: AssessmentQueries      // ✅ Add this line
   mode: Mode
   isLocked?: boolean
   onBlurSave?: () => Promise<void> | void
@@ -46,6 +48,7 @@ const TRAINING_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 export const PersonalDetailsTab: React.FC<PersonalDetailsTabProps> = ({
   personalDetails,
   setPersonalDetails,
+  assessmentQueries, 
   mode,
   isLocked = false,
   onBlurSave,
